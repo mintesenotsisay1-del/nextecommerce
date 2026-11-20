@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Info, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Info, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
@@ -31,6 +32,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     getStorefrontProductEntries(),
   ]);
   const { user, configured, isAdmin, orders, ordersLive } = adminData;
+
+  // Hard redirect: when Supabase is configured, only admins may enter.
+  // This runs after the middleware check and covers any edge cases where
+  // the proxy layer might be skipped (e.g. direct fetch, ISR, etc.).
+  if (configured && user && !isAdmin) {
+    redirect("/account");
+  }
+
   const liveCatalogue = products.some((entry) => entry.sourceId);
   const canManage = !configured || isAdmin;
   const generatedAt = new Date().toISOString();
@@ -79,39 +88,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             Connect Supabase (see the project README) and create the{" "}
             <code className="rounded bg-muted px-1 py-0.5 text-[11px]">orders</code> table to
             switch to live orders. Product edits are kept in this session only.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {configured && !isAdmin && (
-        <Alert className="mb-4 rounded-2xl sm:mb-5">
-          <LockKeyhole className="size-4 shrink-0" aria-hidden />
-          <AlertTitle>
-            {user ? "Read-only admin access" : "Sign in with an admin account"}
-          </AlertTitle>
-          <AlertDescription>
-            {user ? (
-              <>
-                Signed in as{" "}
-                <span className="font-medium text-foreground">{user.email}</span>, but this
-                account isn&apos;t marked as admin. Set{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
-                  profiles.is_admin = true
-                </code>{" "}
-                to manage the catalogue and orders.
-              </>
-            ) : (
-              <>
-                Viewing in read-only mode.{" "}
-                <Link
-                  href="/auth/login?next=/admin"
-                  className="font-medium text-foreground underline underline-offset-2"
-                >
-                  Sign in
-                </Link>{" "}
-                with an admin account to make changes.
-              </>
-            )}
           </AlertDescription>
         </Alert>
       )}

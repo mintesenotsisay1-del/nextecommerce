@@ -29,26 +29,46 @@ export default async function proxy(request: NextRequest) {
     },
   });
 
-  // IMPORTANT: don't remove getSession() – it refreshes expired tokens.
+  // IMPORTANT: don't remove getUser() – it refreshes expired tokens.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isProtected =
+
+  // ── Unauthenticated redirect ─────────────────────────────────
+  const requiresAuth =
     pathname.startsWith("/account") ||
     pathname.startsWith("/admin") ||
     pathname === "/checkout";
 
-  if (isProtected && !user) {
-    // Keep the complete destination (including query) so sign-in can return
-    // the shopper to the exact checkout URL they requested.
+  if (requiresAuth && !user) {
     const nextPath = `${pathname}${request.nextUrl.search}`;
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth/login";
     redirectUrl.search = "";
     redirectUrl.searchParams.set("next", nextPath);
     return NextResponse.redirect(redirectUrl);
+  }
+
+  // ── Admin-only redirect ───────────────────────────────────────
+  // When Supabase is configured, /admin requires is_admin = true.
+  // We check the profiles table directly — the is_admin() RPC is not
+  // available in middleware (service role not used here), so a direct
+  // row read with the anon key + RLS is the safe approach.
+  if (pathname.startsWith("/admin") && user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.is_admin) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/account";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   return response;
