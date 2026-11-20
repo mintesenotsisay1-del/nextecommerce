@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Save,
   Store,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -333,6 +334,68 @@ export function StorefrontSettingsPanel({
               placeholder="Sole & Stone"
             />
           </Field>
+        </section>
+
+        {/* ── Shipping ── */}
+        <section className="flex flex-col gap-4 rounded-2xl border p-4 sm:p-5">
+          <SectionHeading
+            icon={Truck}
+            title="Free shipping threshold"
+            description="Orders at or above this amount qualify for free shipping. Applied in the cart, drawer and at checkout."
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Minimum order for free shipping (USD)"
+              htmlFor="store-free-shipping"
+              hint="Set to 0 to offer free shipping on all orders."
+            >
+              <div className="relative">
+                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="store-free-shipping"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="1"
+                  value={draft.freeShippingThreshold}
+                  onChange={(event) => {
+                    const val = Number(event.target.value);
+                    if (Number.isFinite(val) && val >= 0) {
+                      setDraft((current) => ({
+                        ...current,
+                        freeShippingThreshold: Math.round(val),
+                      }));
+                    }
+                  }}
+                  disabled={!canManage}
+                  className="pl-6"
+                  placeholder="250"
+                />
+              </div>
+            </Field>
+            <div className="flex items-end">
+              <div
+                className={cn(
+                  "w-full rounded-xl border px-4 py-3 text-sm",
+                  draft.freeShippingThreshold === 0
+                    ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700"
+                    : "bg-muted/40 text-muted-foreground"
+                )}
+              >
+                {draft.freeShippingThreshold === 0 ? (
+                  <>Free shipping on <strong className="font-semibold text-emerald-700">all orders</strong></>
+                ) : (
+                  <>Free shipping on orders over{" "}
+                    <strong className="font-semibold text-foreground">
+                      ${draft.freeShippingThreshold}
+                    </strong>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* ── Announcement banner ── */}

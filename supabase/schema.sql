@@ -80,12 +80,17 @@ $$;
 -- Single public row edited from the admin "Storefront" tab. Missing or
 -- partial values fall back to the app defaults in lib/site-settings.ts.
 create table if not exists public.site_settings (
-  id           text primary key default 'default',
-  company_name text not null default 'Sole & Stone',
-  hero         jsonb not null default '{}'::jsonb,
-  banner       jsonb not null default '{}'::jsonb,
-  updated_at   timestamptz not null default now()
+  id                      text primary key default 'default',
+  company_name            text not null default 'Sole & Stone',
+  free_shipping_threshold numeric(10,2) not null default 250,
+  hero                    jsonb not null default '{}'::jsonb,
+  banner                  jsonb not null default '{}'::jsonb,
+  updated_at              timestamptz not null default now()
 );
+
+-- Add column to existing deployments that created the table before this change.
+alter table public.site_settings
+  add column if not exists free_shipping_threshold numeric(10,2) not null default 250;
 
 alter table public.site_settings enable row level security;
 do $$ begin

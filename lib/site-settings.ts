@@ -31,12 +31,15 @@ export type SiteBannerSettings = {
 
 export type SiteSettings = {
   companyName: string;
+  /** Free shipping threshold in USD. Orders at or above this amount ship free. */
+  freeShippingThreshold: number;
   hero: SiteHeroSettings;
   banner: SiteBannerSettings;
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   companyName: "Sole & Stone",
+  freeShippingThreshold: 250,
   hero: {
     badge: "Autumn Release 2026",
     title: "Footwear that carries every step.",
@@ -64,6 +67,7 @@ export const SITE_SETTINGS_STORAGE_KEY = "sole-stone-site-settings-v1";
 export type SiteSettingsRow = {
   id?: string;
   company_name?: string | null;
+  free_shipping_threshold?: number | null;
   hero?: unknown;
   banner?: unknown;
   updated_at?: string | null;
@@ -96,8 +100,15 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
   const banner = isRecord(source.banner) ? source.banner : {};
   const defaults = DEFAULT_SITE_SETTINGS;
 
+  const rawThreshold = Number(source.freeShippingThreshold);
+  const freeShippingThreshold =
+    Number.isFinite(rawThreshold) && rawThreshold >= 0
+      ? Math.round(rawThreshold)
+      : defaults.freeShippingThreshold;
+
   return {
     companyName: textOr(source.companyName, defaults.companyName, 80),
+    freeShippingThreshold,
     hero: {
       badge: text(hero.badge, defaults.hero.badge, 80),
       title: textOr(hero.title, defaults.hero.title, 180),
@@ -125,6 +136,7 @@ export function rowToSettings(row: SiteSettingsRow | null | undefined): SiteSett
 
   return normalizeSiteSettings({
     companyName: row.company_name,
+    freeShippingThreshold: row.free_shipping_threshold,
     hero: row.hero,
     banner: row.banner,
   });
@@ -133,6 +145,7 @@ export function rowToSettings(row: SiteSettingsRow | null | undefined): SiteSett
 export function settingsToRow(settings: SiteSettings) {
   return {
     company_name: settings.companyName,
+    free_shipping_threshold: settings.freeShippingThreshold,
     hero: settings.hero,
     banner: settings.banner,
   };

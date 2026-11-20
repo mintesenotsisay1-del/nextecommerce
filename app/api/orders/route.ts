@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PRODUCTS } from "@/lib/data/products";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings";
 import type { CartLine, ShippingDetails } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,25 @@ export async function POST(request: Request) {
     });
   }
 
-  const shipping = subtotal >= 250 ? 0 : 9.9;
+  // ── Free-shipping threshold (from site_settings when available) ──
+  let freeShippingThreshold = DEFAULT_SITE_SETTINGS.freeShippingThreshold;
+  if (isSupabaseConfigured()) {
+    try {
+      const supabaseForSettings = await getSupabaseServerClient();
+      const { data: settingsRow } = await supabaseForSettings!
+        .from("site_settings")
+        .select("free_shipping_threshold")
+        .eq("id", "default")
+        .maybeSingle();
+      if (settingsRow?.free_shipping_threshold != null) {
+        freeShippingThreshold = Number(settingsRow.free_shipping_threshold);
+      }
+    } catch {
+      // Fall back to default if the table doesn't exist yet.
+    }
+  }
+
+  const shipping = subtotal >= freeShippingThreshold ? 0 : 9.9;
   const total = subtotal + shipping;
 
   // ── Persist when Supabase is connected ────────────────────────

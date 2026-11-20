@@ -24,7 +24,7 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { freeShippingThreshold, useCart } from "@/components/providers/cart-provider";
+import { useCart } from "@/components/providers/cart-provider";
 import { formatPrice } from "@/lib/format";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
@@ -32,10 +32,9 @@ import { cn } from "@/lib/utils";
 const DESKTOP_QUERY = "(min-width: 768px)";
 
 export function CartDrawer() {
-  const { lines, count, subtotal, isOpen, openCart, closeCart, removeLine, setQuantity, restoreLines } =
+  const { lines, count, subtotal, isOpen, openCart, closeCart, removeLine, setQuantity, restoreLines, freeShippingThreshold: threshold } =
     useCart();
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
-  const threshold = freeShippingThreshold();
   const remaining = Math.max(0, threshold - subtotal);
   const freeShipping = subtotal >= threshold;
   // Keep "99%" honest until the threshold is actually crossed.

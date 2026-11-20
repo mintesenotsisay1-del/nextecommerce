@@ -28,7 +28,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
-import { freeShippingThreshold, useCart } from "@/components/providers/cart-provider";
+import { useCart } from "@/components/providers/cart-provider";
 import {
   readLocalSavedAddress,
   savedAddressFromProfile,
@@ -129,8 +129,7 @@ const INPUT_CLS = "h-11 sm:h-10";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { lines, subtotal, clear } = useCart();
-  const threshold = freeShippingThreshold();
+  const { lines, subtotal, clear, freeShippingThreshold: threshold } = useCart();
   const freeShipping = subtotal >= threshold;
   const shipping = freeShipping || subtotal === 0 ? 0 : 9.9;
   const total = subtotal + shipping;

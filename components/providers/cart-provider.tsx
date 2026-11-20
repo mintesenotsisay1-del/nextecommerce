@@ -3,11 +3,14 @@
 import * as React from "react";
 import type { CartLine, Product } from "@/lib/types";
 import { useHydratedJson } from "@/lib/hooks/use-hydrated-json";
+import { useSiteSettings } from "@/components/providers/site-settings-provider";
 
 type CartContextValue = {
   lines: CartLine[];
   count: number;
   subtotal: number;
+  /** Live free-shipping threshold from site settings. */
+  freeShippingThreshold: number;
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
@@ -22,10 +25,15 @@ type CartContextValue = {
 const CartContext = React.createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "sole-stone-cart-v1";
 
-const FREE_SHIPPING_THRESHOLD = 250;
+/** Default used before settings hydrate and in demo mode without a saved value. */
+const DEFAULT_FREE_SHIPPING_THRESHOLD = 250;
 
 export function freeShippingThreshold() {
-  return FREE_SHIPPING_THRESHOLD;
+  // This export is kept for backwards-compatibility with components that call
+  // it without access to the context. The canonical value is now read from
+  // useSiteSettings() inside CartProvider and passed down via context — but
+  // callers that only need the number can read it from the context via useCart().
+  return DEFAULT_FREE_SHIPPING_THRESHOLD;
 }
 
 function lineKey(productId: string, size: string) {
@@ -33,6 +41,8 @@ function lineKey(productId: string, size: string) {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { settings } = useSiteSettings();
+  const threshold = settings.freeShippingThreshold ?? DEFAULT_FREE_SHIPPING_THRESHOLD;
   const [lines, setLines, hydrated] = useHydratedJson<CartLine[]>(STORAGE_KEY, []);
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -114,6 +124,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       count,
       subtotal,
+      freeShippingThreshold: threshold,
       isOpen,
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
@@ -127,6 +138,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       count,
       subtotal,
+      threshold,
       isOpen,
       addItem,
       removeLine,

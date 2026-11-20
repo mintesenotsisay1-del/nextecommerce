@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { freeShippingThreshold, useCart } from "@/components/providers/cart-provider";
+import { useCart } from "@/components/providers/cart-provider";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { ProductCard } from "@/components/storefront/product-card";
 import { PRODUCTS } from "@/lib/data/products";
@@ -42,9 +42,8 @@ const TRUST_ITEMS = [
 ] as const;
 
 export default function CartPage() {
-  const { lines, count, subtotal, setQuantity, removeLine, clear, restoreLines } = useCart();
+  const { lines, count, subtotal, setQuantity, removeLine, clear, restoreLines, freeShippingThreshold: threshold } = useCart();
   const { has, toggle } = useWishlist();
-  const threshold = freeShippingThreshold();
   const freeShipping = subtotal >= threshold;
   const shipping = freeShipping || subtotal === 0 ? 0 : 9.9;
   const total = subtotal + shipping;
