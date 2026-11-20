@@ -13,6 +13,7 @@ import {
   ChevronDown,
   CreditCard,
   Lock,
+  LocateFixed,
   RotateCcw,
   ShoppingBag,
   Tag,
@@ -122,6 +123,134 @@ function addBusinessDays(date: Date, days: number): Date {
     if (day !== 0 && day !== 6) added += 1;
   }
   return result;
+}
+
+type LocateState = "idle" | "locating" | "done" | "error";
+
+type NominatimAddress = {
+  road?: string;
+  house_number?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  county?: string;
+  postcode?: string;
+  country?: string;
+};
+
+type AddressPatch = Partial<Record<"address" | "city" | "postalCode" | "country", string>>;
+
+/** Reverse-geocode a lat/lon via OpenStreetMap Nominatim (no API key). */
+async function reverseGeocode(lat: number, lon: number): Promise<AddressPatch> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+    { headers: { "Accept-Language": "en" } }
+  );
+  if (!res.ok) throw new Error("Nominatim failed");
+  const data = (await res.json()) as { address?: NominatimAddress };
+  const a = data.address ?? {};
+  const patch: AddressPatch = {};
+  const street = [a.house_number, a.road].filter(Boolean).join(" ");
+  if (street) patch.address = street;
+  const city = a.city ?? a.town ?? a.village ?? a.county ?? "";
+  if (city) patch.city = city;
+  if (a.postcode) patch.postalCode = a.postcode;
+  if (a.country) patch.country = a.country;
+  return patch;
+}
+
+/** IP-based location via ip-api.com — no permission, no key, works everywhere. */
+async function ipGeolocate(): Promise<AddressPatch> {
+  const res = await fetch(
+    "https://ip-api.com/json/?fields=city,zip,country",
+    { headers: { "Accept": "application/json" } }
+  );
+  if (!res.ok) throw new Error("ip-api failed");
+  const data = (await res.json()) as {
+    status?: string;
+    city?: string;
+    zip?: string;
+    country?: string;
+  };
+  if (data.status === "fail") throw new Error("ip-api returned fail");
+  const patch: AddressPatch = {};
+  if (data.city) patch.city = data.city;
+  if (data.zip) patch.postalCode = data.zip;
+  if (data.country) patch.country = data.country;
+  return patch;
+}
+
+/**
+ * Two-tier location detection:
+ * 1. Browser GPS → Nominatim reverse geocode (precise, needs permission)
+ * 2. IP geolocation fallback via ip-api.com (city/country/zip, no permission)
+ *
+ * The fallback fires automatically on any GPS failure — denied, timeout, or
+ * unsupported — so "Use my location" always produces something useful.
+ */
+function useLocateMe(onFill: (patch: AddressPatch) => void) {
+  const [state, setState] = React.useState<LocateState>("idle");
+
+  const locate = React.useCallback(async () => {
+    setState("locating");
+
+    // ── Tier 1: GPS + reverse geocoding ─────────────────────────
+    if (navigator.geolocation) {
+      try {
+        const permission = await navigator.permissions
+          .query({ name: "geolocation" })
+          .catch(() => null);
+
+        // Only attempt GPS when permission isn't already denied — avoids a
+        // 10-second timeout on browsers that silently block without prompting.
+        if (!permission || permission.state !== "denied") {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false, // faster, less battery
+              timeout: 6_000,
+              maximumAge: 60_000,
+            })
+          );
+          const { latitude, longitude } = position.coords;
+          const patch = await reverseGeocode(latitude, longitude);
+
+          if (Object.keys(patch).length > 0) {
+            onFill(patch);
+            setState("done");
+            toast.success("Location detected", {
+              description: "Review the fields and adjust if needed.",
+            });
+            return;
+          }
+        }
+      } catch {
+        // GPS denied / timed out / geocoding failed → fall through to IP
+      }
+    }
+
+    // ── Tier 2: IP geolocation (no permission needed) ────────────
+    try {
+      const patch = await ipGeolocate();
+
+      if (Object.keys(patch).length > 0) {
+        onFill(patch);
+        setState("done");
+        toast.success("Location detected via network", {
+          description: "City and country filled. Street address still needs to be entered.",
+        });
+        return;
+      }
+
+      throw new Error("Empty IP result");
+    } catch {
+      setState("error");
+      toast.error("Could not detect location", {
+        description: "Enter your address manually.",
+      });
+    }
+  }, [onFill]);
+
+  return { state, locate };
 }
 
 /** Input sizing: roomier on touch screens, compact from sm up. */
@@ -400,6 +529,20 @@ export default function CheckoutPage() {
   const [summaryOpen, setSummaryOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
+
+  const { state: locateState, locate } = useLocateMe(
+    React.useCallback(
+      (patch) => {
+        setDraft((current) => ({ ...current, ...patch }));
+        setErrors((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(patch)) delete next[key];
+          return next;
+        });
+      },
+      [setDraft]
+    )
+  );
 
   // On phones the on-screen keyboard covers the bottom of the screen, and a
   // fixed bar is anchored to the *layout* viewport — so the action bar would
@@ -884,12 +1027,32 @@ export default function CheckoutPage() {
           {step === 1 && (
             <Card>
               <CardHeader>
-                <CardTitle className="font-heading flex items-center gap-2 text-lg">
-                  <Truck className="size-4" aria-hidden /> Shipping address
-                </CardTitle>
-                <CardDescription>
-                  {deliveryWindow ? `Delivery estimate: ${deliveryWindow}.` : "Delivery in 2–4 business days."}
-                </CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <CardTitle className="font-heading flex items-center gap-2 text-lg">
+                      <Truck className="size-4" aria-hidden /> Shipping address
+                    </CardTitle>
+                    <CardDescription>
+                      {deliveryWindow ? `Delivery estimate: ${deliveryWindow}.` : "Delivery in 2–4 business days."}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 rounded-full"
+                    onClick={() => void locate()}
+                    disabled={locateState === "locating"}
+                    title="Fill address fields from your current location"
+                  >
+                    {locateState === "locating" ? (
+                      <Spinner className="size-3.5" aria-hidden />
+                    ) : (
+                      <LocateFixed className="size-3.5" aria-hidden />
+                    )}
+                    {locateState === "locating" ? "Detecting…" : "Use my location"}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
                 <Field className="sm:col-span-2" label="Street address" id="address" error={errors.address}>

@@ -36,6 +36,19 @@ export default async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // ── Redirect already-authenticated users away from auth pages ──
+  // If a signed-in user clicks "Sign in" or navigates to /auth/login or
+  // /auth/signup, send them straight to /account (or the `next` param).
+  if (user && pathname.startsWith("/auth/")) {
+    const next = request.nextUrl.searchParams.get("next");
+    const destination =
+      next && next.startsWith("/") && !next.startsWith("/auth") ? next : "/account";
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = destination;
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
   // ── Unauthenticated redirect ─────────────────────────────────
   const requiresAuth =
     pathname.startsWith("/account") ||
