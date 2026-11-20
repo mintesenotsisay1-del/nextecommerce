@@ -1,4 +1,4 @@
-# Sole & Stone — modern shoe ecommerce
+# yoda shoe ecommerce
 
 A mobile-first footwear store built with **Next.js 16 (App Router) + shadcn/ui (Base UI) + Tailwind v4 + Supabase**.
 
