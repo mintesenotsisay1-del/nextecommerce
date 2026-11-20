@@ -11,11 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
+import { useSiteSettings } from "@/components/providers/site-settings-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export function SignupForm({ next = "/account" }: { next?: string }) {
   const router = useRouter();
+  const { settings } = useSiteSettings();
   const safeNext =
     next.startsWith("/") && !next.startsWith("//") ? next : "/account";
   const isCheckout = safeNext.startsWith("/checkout");
@@ -57,7 +59,7 @@ export function SignupForm({ next = "/account" }: { next?: string }) {
       return;
     }
     if (data.session) {
-      toast.success("Welcome to Sole & Stone!");
+      toast.success(`Welcome to ${settings.companyName}!`);
       router.push(safeNext);
       router.refresh();
     } else {

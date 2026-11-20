@@ -43,6 +43,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InsightsPanel } from "@/components/admin/insights-panel";
+import { StorefrontSettingsPanel } from "@/components/admin/storefront-settings-panel";
 import { ORDER_STATUSES, OrderDetailDialog } from "@/components/admin/order-detail-dialog";
 import { ProductFormDialog } from "@/components/admin/product-form-dialog";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "@/lib/data/catalog-meta";
@@ -300,7 +301,7 @@ type AdminDashboardProps = {
   /** Request timestamp used to anchor relative date ranges without render-time clocks. */
   generatedAt: string;
   /** Opens a specific workspace tab, e.g. when returning from a customer profile. */
-  initialTab?: "orders" | "inventory" | "customers" | "insights";
+  initialTab?: "orders" | "inventory" | "customers" | "insights" | "storefront";
 };
 
 export function AdminDashboard({
@@ -823,7 +824,7 @@ export function AdminDashboard({
 
       {/* Operations */}
       <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
-        <TabsList className="w-full justify-start overflow-x-auto sm:w-fit">
+        <TabsList className="scrollbar-hide w-full justify-start overflow-x-auto sm:w-fit">
           <TabsTrigger value="orders" className="shrink-0">
             Orders <span className="text-[10px] text-muted-foreground">{orders.length}</span>
           </TabsTrigger>
@@ -835,6 +836,9 @@ export function AdminDashboard({
           </TabsTrigger>
           <TabsTrigger value="insights" className="shrink-0">
             Insights
+          </TabsTrigger>
+          <TabsTrigger value="storefront" className="shrink-0">
+            Storefront
           </TabsTrigger>
         </TabsList>
 
@@ -1633,6 +1637,10 @@ export function AdminDashboard({
             onEditProduct={openEdit}
             onFilterStatus={viewStatusOrders}
           />
+        </TabsContent>
+
+        <TabsContent value="storefront">
+          <StorefrontSettingsPanel products={products} canManage={canManage} />
         </TabsContent>
       </Tabs>
 

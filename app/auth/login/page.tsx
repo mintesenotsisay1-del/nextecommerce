@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
+import { loadSiteSettings } from "@/lib/data/site-settings";
 
-export const metadata: Metadata = {
-  title: "Sign in",
-  description: "Sign in to Sole & Stone to track orders, wishlist shoes and get early access.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { companyName } = await loadSiteSettings();
+
+  return {
+    title: "Sign in",
+    description: `Sign in to ${companyName} to track orders, wishlist shoes and get early access.`,
+  };
+}
 
 /** Reads the `next` return path (for example, back to checkout). */
 export default async function LoginPage({

@@ -1,0 +1,157 @@
+/**
+ * Shared storefront settings: company name, announcement banner and the
+ * home-page hero. The same shape is used by the admin editor, the Supabase
+ * row mapping and every storefront consumer, so a saved value renders
+ * consistently everywhere.
+ */
+
+export type SiteHeroSettings = {
+  badge: string;
+  title: string;
+  /** Word inside `title` to mute/highlight. Empty hides the accent. */
+  highlight: string;
+  description: string;
+  primaryLabel: string;
+  primaryHref: string;
+  secondaryLabel: string;
+  secondaryHref: string;
+  /** Optional image override. Empty uses the featured product's first photo. */
+  image: string;
+  imageAlt: string;
+  /** Product slug used for the hero photo, price chip and "View" link. */
+  featuredSlug: string;
+};
+
+export type SiteBannerSettings = {
+  enabled: boolean;
+  message: string;
+  /** Optional link. Empty renders the message as plain text. */
+  href: string;
+};
+
+export type SiteSettings = {
+  companyName: string;
+  hero: SiteHeroSettings;
+  banner: SiteBannerSettings;
+};
+
+export const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  companyName: "Sole & Stone",
+  hero: {
+    badge: "Autumn Release 2026",
+    title: "Footwear that carries every step.",
+    highlight: "every",
+    description:
+      "Sneakers, runners, boots, dress & heels — curated in small editions, shipped free over $250, and backed by 30-day returns.",
+    primaryLabel: "Shop the collection",
+    primaryHref: "/products",
+    secondaryLabel: "See what’s on sale",
+    secondaryHref: "/products?sale=1",
+    image: "",
+    imageAlt: "",
+    featuredSlug: "air-max-1-white-orange",
+  },
+  banner: {
+    enabled: false,
+    message: "Free shipping over $250 · 30-day easy returns · 100% authentic pairs",
+    href: "/products",
+  },
+};
+
+export const SITE_SETTINGS_STORAGE_KEY = "sole-stone-site-settings-v1";
+
+/** Snake-case shape stored in `public.site_settings`. */
+export type SiteSettingsRow = {
+  id?: string;
+  company_name?: string | null;
+  hero?: unknown;
+  banner?: unknown;
+  updated_at?: string | null;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Trimmed text, falling back only when the value isn't a string. */
+function text(value: unknown, fallback: string, maxLength = 500): string {
+  if (typeof value !== "string") return fallback;
+  return value.trim().slice(0, maxLength);
+}
+
+/** Trimmed text, falling back when the value is missing or blank. */
+function textOr(value: unknown, fallback: string, maxLength = 500): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, maxLength) : fallback;
+}
+
+/**
+ * Accepts unknown data from Supabase, localStorage or the admin form and
+ * returns a complete, safely bounded settings object.
+ */
+export function normalizeSiteSettings(value: unknown): SiteSettings {
+  const source = isRecord(value) ? value : {};
+  const hero = isRecord(source.hero) ? source.hero : {};
+  const banner = isRecord(source.banner) ? source.banner : {};
+  const defaults = DEFAULT_SITE_SETTINGS;
+
+  return {
+    companyName: textOr(source.companyName, defaults.companyName, 80),
+    hero: {
+      badge: text(hero.badge, defaults.hero.badge, 80),
+      title: textOr(hero.title, defaults.hero.title, 180),
+      highlight: text(hero.highlight, defaults.hero.highlight, 60),
+      description: textOr(hero.description, defaults.hero.description, 400),
+      primaryLabel: textOr(hero.primaryLabel, defaults.hero.primaryLabel, 60),
+      primaryHref: textOr(hero.primaryHref, defaults.hero.primaryHref, 500),
+      secondaryLabel: text(hero.secondaryLabel, defaults.hero.secondaryLabel, 60),
+      secondaryHref: text(hero.secondaryHref, defaults.hero.secondaryHref, 500),
+      image: text(hero.image, defaults.hero.image, 1000),
+      imageAlt: text(hero.imageAlt, defaults.hero.imageAlt, 200),
+      featuredSlug: text(hero.featuredSlug, defaults.hero.featuredSlug, 200),
+    },
+    banner: {
+      enabled:
+        typeof banner.enabled === "boolean" ? banner.enabled : defaults.banner.enabled,
+      message: textOr(banner.message, defaults.banner.message, 200),
+      href: text(banner.href, defaults.banner.href, 500),
+    },
+  };
+}
+
+export function rowToSettings(row: SiteSettingsRow | null | undefined): SiteSettings {
+  if (!row) return DEFAULT_SITE_SETTINGS;
+
+  return normalizeSiteSettings({
+    companyName: row.company_name,
+    hero: row.hero,
+    banner: row.banner,
+  });
+}
+
+export function settingsToRow(settings: SiteSettings) {
+  return {
+    company_name: settings.companyName,
+    hero: settings.hero,
+    banner: settings.banner,
+  };
+}
+
+/**
+ * Splits a headline around the highlighted word (case-insensitive, first
+ * match). Used by the hero and its admin preview so both render identically.
+ */
+export function splitHighlight(title: string, highlight: string) {
+  const needle = highlight.trim();
+  if (!needle) return { before: title, match: "", after: "" };
+
+  const index = title.toLowerCase().indexOf(needle.toLowerCase());
+  if (index === -1) return { before: title, match: "", after: "" };
+
+  return {
+    before: title.slice(0, index),
+    match: title.slice(index, index + needle.length),
+    after: title.slice(index + needle.length),
+  };
+}

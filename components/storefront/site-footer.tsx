@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AtSign, Globe, Send } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { SiteBrand } from "@/components/storefront/site-brand";
 import { getCategories } from "@/lib/data/products";
 
 export function SiteFooter() {
@@ -10,7 +11,9 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <p className="font-heading text-xl font-semibold">Next</p>
+            <p className="font-heading text-xl font-semibold">
+              <SiteBrand />
+            </p>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">
               A modern footwear boutique for people who care about every step. Used in SoHo, running
               on rails worldwide.
@@ -70,7 +73,9 @@ export function SiteFooter() {
         <Separator className="my-8" />
 
         <div className="flex flex-col items-center justify-between gap-3 text-xs text-muted-foreground sm:flex-row">
-          <p>© {new Date().getFullYear()} Sole & Stone.</p>
+          <p>
+            © {new Date().getFullYear()} <SiteBrand />.
+          </p>
           <p className="flex gap-4">
             <span className="cursor-default hover:underline">Privacy</span>
             <span className="cursor-default hover:underline">Terms</span>

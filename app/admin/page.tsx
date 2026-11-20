@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-const ADMIN_TABS = ["orders", "inventory", "customers", "insights"] as const;
+const ADMIN_TABS = ["orders", "inventory", "customers", "insights", "storefront"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 type AdminPageProps = {

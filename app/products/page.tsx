@@ -5,15 +5,19 @@ import { ChevronRight, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CatalogClient } from "@/components/storefront/catalog-client";
 import { getCatalogProducts } from "@/lib/data/storefront-products";
+import { loadSiteSettings } from "@/lib/data/site-settings";
 import { formatPrice } from "@/lib/format";
 
 export const revalidate = 0;
 
-export const metadata: Metadata = {
-  title: "All shoes",
-  description:
-    "Browse the full Sole & Stone catalogue — filter by category, brand, size, colour, price or sale, search instantly, compare pairs and sort in a tap.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { companyName } = await loadSiteSettings();
+
+  return {
+    title: "All shoes",
+    description: `Browse the full ${companyName} catalogue — filter by category, brand, size, colour, price or sale, search instantly, compare pairs and sort in a tap.`,
+  };
+}
 
 export default async function ProductsPage() {
   const products = await getCatalogProducts();

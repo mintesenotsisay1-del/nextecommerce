@@ -76,6 +76,32 @@ as $$
   select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
 $$;
 
+-- ── Site settings ─────────────────────────────────────────────────
+-- Single public row edited from the admin "Storefront" tab. Missing or
+-- partial values fall back to the app defaults in lib/site-settings.ts.
+create table if not exists public.site_settings (
+  id           text primary key default 'default',
+  company_name text not null default 'Sole & Stone',
+  hero         jsonb not null default '{}'::jsonb,
+  banner       jsonb not null default '{}'::jsonb,
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.site_settings enable row level security;
+do $$ begin
+  if not exists (select 1 from pg_policies where policyname = 'Site settings are public') then
+    create policy "Site settings are public" on public.site_settings for select using (true);
+  end if;
+end $$;
+do $$ begin
+  if not exists (select 1 from pg_policies where policyname = 'Admins manage site settings') then
+    create policy "Admins manage site settings" on public.site_settings for all
+      using (public.is_admin()) with check (public.is_admin());
+  end if;
+end $$;
+
+insert into public.site_settings (id) values ('default') on conflict (id) do nothing;
+
 -- ── Products ──────────────────────────────────────────────────────
 create table if not exists public.products (
   id               uuid primary key default gen_random_uuid(),
@@ -203,3 +229,7 @@ create index if not exists orders_created_idx   on public.orders (created_at des
 create index if not exists reviews_product_idx  on public.reviews (product_id);
 create index if not exists products_brand_idx   on public.products (brand);
 create index if not exists products_cat_idx     on public.products (category);
+
+-- ── PostgREST ─────────────────────────────────────────────────────
+-- Make new tables/columns visible to the REST API immediately.
+notify pgrst, 'reload schema';

@@ -20,7 +20,7 @@ you drop in your Supabase project keys.
 - Cart: hover quick-add sizes on cards, free-shipping progress drawer, full cart page
 - 3-step checkout (contact → shipping → payment) with per-step validation, order summary, and success page
 - Checkout requires sign-in when Supabase is connected, then returns the shopper to the saved bag; demo mode keeps guest checkout working
-- Recently viewed rail, 404 page, toasts, reveal animations, announcement marquee
+- Recently viewed rail, 404 page, toasts, reveal animations, admin-controlled announcement banner
 
 **Auth (Supabase)**
 - Email/password sign-up + sign-in, password visibility toggle
@@ -31,16 +31,17 @@ you drop in your Supabase project keys.
 **Account & Admin**
 - `/account`: profile card, saved delivery details (name, phone, address) that prefill checkout, quick links, order history (merges Supabase orders + local demo orders)
 - Checkout drafts and delivery caches are bound to the signed-in account; sign-out/account switching clears them so no previous name, phone or address is reused
-- `/admin`: mobile-first workspace with card layouts on phones and full tables on desktop; deep-linkable tabs via `?tab=orders|inventory|customers|insights`
+- `/admin`: mobile-first workspace with card layouts on phones and full tables on desktop; deep-linkable tabs via `?tab=orders|inventory|customers|insights|storefront`
 - Performance header with 7/30/90-day period selector, KPI cards with period-over-period deltas, and a responsive revenue trend chart
 - Product create/edit/duplicate/delete with image previews, size-stock editing, searchable inventory, health filters, sort, CSV export and a low-stock restock queue
 - Order search, status filter, sorting, detail dialog, clickable fulfilment pipeline, customer spend summary and CSV export
 - Customer profiles at `/admin/customers/[key]` — lifetime KPIs, six-month spend trend, contact/shipping details, top products, category mix, and searchable order history with CSV export and inline status updates
 - Insights tab with top products by revenue, category mix, repeat rate and period metrics
+- Storefront tab: edit the company name, announcement banner (enabled, message, link) and home-page hero (badge, headline, highlighted word, description, CTA labels/links, image, featured product) with live previews
 - Admin writes are gated by `profiles.is_admin`; demo-mode edits stay in the session, live mode persists through Supabase RLS
 
 **Supabase**
-- `supabase/schema.sql` — products, orders (JSONB items), reviews, wishlist, profiles + auto-profile trigger, admin helper, RLS policies, indexes
+- `supabase/schema.sql` — products, orders (JSONB items), reviews, wishlist, profiles + auto-profile trigger, site settings, admin helper, RLS policies, indexes
 - `supabase/seed.sql` — demo catalogue with the exact product data used by the app
 - `proxy.ts` — session refresh + route protection (`/account`, `/admin`, `/checkout` require sign-in when configured)
 
@@ -75,9 +76,10 @@ Open http://localhost:3000. Everything works out of the box in demo mode.
 > `http://localhost:3000/auth/callback`) to Supabase's redirect URLs.
 
 > Updating an existing project? Re-run `supabase/schema.sql` — it is idempotent and adds the
-> `phone`, `address`, `city`, `postal_code` and `country` columns used by saved delivery details.
+> `phone`, `address`, `city`, `postal_code` and `country` columns used by saved delivery details,
+> plus the `site_settings` table used by the admin Storefront tab.
 
-Auth, order persistence, admin product/order management and review saving go live automatically.
+Auth, order persistence, admin product/order management, storefront settings and review saving go live automatically.
 To make your account an admin: `update profiles set is_admin = true where email = 'you@example.com';`
 
 > Client-side signups: if you want email confirmation disabled for quick testing, set it in

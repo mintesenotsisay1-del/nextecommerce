@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, LayoutGrid, LogOut, Search, ShoppingBag, Sparkles, User } from "lucide-react";
+import { Heart, LayoutGrid, LogOut, Search, ShoppingBag, User } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useCart } from "@/components/providers/cart-provider";
+import { useSiteSettings } from "@/components/providers/site-settings-provider";
 import { useWishlist } from "@/components/providers/wishlist-provider";
+import { BrandName } from "@/components/storefront/site-brand";
 import {
   checkoutIdentityForUser,
   clearCheckoutIdentity,
@@ -51,6 +53,7 @@ export function SiteHeader() {
   const [user, setUser] = React.useState<UserData>(null);
   const { count, openCart } = useCart();
   const { ids } = useWishlist();
+  const { settings } = useSiteSettings();
   const router = useRouter();
 
   // Derived without state: the external "hydration" store flips once on the
@@ -169,7 +172,7 @@ export function SiteHeader() {
             </SheetTrigger>
             <SheetContent side="left" className="w-80">
               <SheetHeader>
-                <SheetTitle className="font-heading text-xl">YoDa</SheetTitle>
+                <SheetTitle className="font-heading text-xl">{settings.companyName}</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 px-4">
                 {NAV_LINKS.map((link) => (
@@ -201,9 +204,9 @@ export function SiteHeader() {
 
           {/* Logo */}
           <Link href="/" className="flex shrink-0 items-center gap-2">
-            <span className="sr-only">Sole & Stone</span>
+            <span className="sr-only">{settings.companyName}</span>
             <span className="font-heading text-xl font-semibold tracking-tight whitespace-nowrap sm:text-2xl">
-              Sole <span className="text-muted-foreground">&</span> Stone
+              <BrandName name={settings.companyName} />
             </span>
           </Link>
 

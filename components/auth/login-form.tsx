@@ -11,11 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
+import { useSiteSettings } from "@/components/providers/site-settings-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
+  const { settings } = useSiteSettings();
   const safeNext =
     next.startsWith("/") && !next.startsWith("//") ? next : "/account";
   const isCheckout = safeNext.startsWith("/checkout");
@@ -146,7 +148,7 @@ export function LoginForm({ next }: { next: string }) {
 
       <Separator className="my-6" />
       <p className="text-center text-sm text-muted-foreground">
-        New to Sole & Stone?{" "}
+        New to {settings.companyName}?{" "}
         <Link href={signupHref} className="font-medium text-foreground underline underline-offset-4">
           Create an account
         </Link>
