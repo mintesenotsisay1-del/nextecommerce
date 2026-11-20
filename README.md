@@ -10,7 +10,7 @@ you drop in your Supabase project keys.
 ## ✨ Features
 
 **Storefront**
-- Clean, light design — Noto Sans typography throughout, generous whitespace
+- Clean, light design — Nunito Sans typography throughout (bold), generous whitespace
 - Fully responsive: mobile bottom tab bar, sheet menus, safe-area padding, desktop hover states
 - ⌘K / Ctrl+K instant search dialog with live results, quick category links, and a thumb-friendly mobile layout
 - Catalog with shareable filters (category, brand, size in-stock, colour swatches, price range slider, sale-only) + 5 sort modes — all state lives in the URL

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans, Inter, Figtree } from "next/font/google";
+import { Nunito_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 import { CartProvider } from "@/components/providers/cart-provider";
 import { WishlistProvider } from "@/components/providers/wishlist-provider";
@@ -12,13 +12,10 @@ import { getAllProducts } from "@/lib/data/products";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const figtreeHeading = Figtree({subsets:['latin'],variable:'--font-heading'});
-
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-const notoSans = Noto_Sans({
+const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
-  variable: "--font-noto-sans",
+  variable: "--font-nunito-sans",
+  weight: "variable",
   display: "swap",
 });
 
@@ -51,10 +48,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={cn("h-full", "antialiased", notoSans.variable, "font-sans", inter.variable, figtreeHeading.variable)}
+      className={cn("h-full", "antialiased", nunitoSans.variable, "font-sans")}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background font-sans">
+      <body className="min-h-full flex flex-col bg-background font-sans font-bold">
         <CartProvider>
           <WishlistProvider productAliases={wishlistAliases}>
             <RecentlyViewedProvider>
