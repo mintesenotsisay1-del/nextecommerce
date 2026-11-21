@@ -5,7 +5,12 @@
  * saved value renders consistently everywhere.
  */
 
+export type SiteHeroImagePosition = "left" | "right";
+export type SiteHeroImageFit = "cover" | "contain";
+
 export type SiteHeroSettings = {
+  /** Show the hero section on the home page. */
+  enabled: boolean;
   badge: string;
   title: string;
   /** Word inside `title` to mute/highlight. Empty hides the accent. */
@@ -20,6 +25,21 @@ export type SiteHeroSettings = {
   imageAlt: string;
   /** Product slug used for the hero photo, price chip and "View" link. */
   featuredSlug: string;
+  /** Which side the photo sits on for desktop layouts. */
+  imagePosition: SiteHeroImagePosition;
+  /** Cover fills the frame; contain shows the whole product cut-out. */
+  imageFit: SiteHeroImageFit;
+  /** Hide the photo and let the copy use the full width. */
+  showImage: boolean;
+  /** Show the shipping / returns / authenticity strip under the CTAs. */
+  showTrustBadges: boolean;
+  /** Optional override for the shipping badge. Empty builds the text from the threshold. */
+  shippingText: string;
+  returnsText: string;
+  authenticText: string;
+  /** Show the floating product card on top of the hero photo. */
+  showEditorPick: boolean;
+  editorPickLabel: string;
 };
 
 export type SiteBannerSettings = {
@@ -27,6 +47,8 @@ export type SiteBannerSettings = {
   message: string;
   /** Optional link. Empty renders the message as plain text. */
   href: string;
+  /** Let shoppers close the strip until the message changes. */
+  dismissible: boolean;
 };
 
 export type SiteWelcomePopupSettings = {
@@ -37,6 +59,8 @@ export type SiteWelcomePopupSettings = {
   code: string;
   ctaLabel: string;
   ctaHref: string;
+  /** Seconds to wait after the page loads before showing the offer. */
+  delaySeconds: number;
 };
 
 export type SiteVacationSettings = {
@@ -62,6 +86,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   currency: "USD",
   freeShippingThreshold: 250,
   hero: {
+    enabled: true,
     badge: "Autumn Release 2026",
     title: "Footwear that carries every step.",
     highlight: "every",
@@ -74,11 +99,21 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     image: "",
     imageAlt: "",
     featuredSlug: "air-max-1-white-orange",
+    imagePosition: "right",
+    imageFit: "cover",
+    showImage: true,
+    showTrustBadges: true,
+    shippingText: "",
+    returnsText: "30-day returns",
+    authenticText: "100% authentic",
+    showEditorPick: true,
+    editorPickLabel: "Editor’s pick",
   },
   banner: {
     enabled: false,
     message: "Free shipping over $250 · 30-day easy returns · 100% authentic pairs",
     href: "/products",
+    dismissible: true,
   },
   welcomePopup: {
     enabled: false,
@@ -87,6 +122,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     code: "WELCOME10",
     ctaLabel: "Shop now",
     ctaHref: "/products",
+    delaySeconds: 1,
   },
   vacation: {
     enabled: false,
@@ -126,6 +162,19 @@ function textOr(value: unknown, fallback: string, maxLength = 500): string {
   return trimmed ? trimmed.slice(0, maxLength) : fallback;
 }
 
+/** Boolean with a fallback for missing/invalid values. */
+function bool(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+/** Whole number bounded to a safe range. */
+function wholeNumber(value: unknown, fallback: number, min: number, max: number): number {
+  if (value === null || value === undefined || value === "") return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
+}
+
 /**
  * Accepts unknown data from Supabase, localStorage or the admin form and
  * returns a complete, safely bounded settings object.
@@ -153,6 +202,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
     currency,
     freeShippingThreshold,
     hero: {
+      enabled: bool(hero.enabled, defaults.hero.enabled),
       badge: text(hero.badge, defaults.hero.badge, 80),
       title: textOr(hero.title, defaults.hero.title, 180),
       highlight: text(hero.highlight, defaults.hero.highlight, 60),
@@ -164,18 +214,28 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
       image: text(hero.image, defaults.hero.image, 1000),
       imageAlt: text(hero.imageAlt, defaults.hero.imageAlt, 200),
       featuredSlug: text(hero.featuredSlug, defaults.hero.featuredSlug, 200),
+      imagePosition: hero.imagePosition === "left" ? "left" : "right",
+      imageFit: hero.imageFit === "contain" ? "contain" : "cover",
+      showImage: bool(hero.showImage, defaults.hero.showImage),
+      showTrustBadges: bool(hero.showTrustBadges, defaults.hero.showTrustBadges),
+      shippingText: text(hero.shippingText, defaults.hero.shippingText, 80),
+      returnsText: text(hero.returnsText, defaults.hero.returnsText, 80),
+      authenticText: text(hero.authenticText, defaults.hero.authenticText, 80),
+      showEditorPick: bool(hero.showEditorPick, defaults.hero.showEditorPick),
+      editorPickLabel: textOr(
+        hero.editorPickLabel,
+        defaults.hero.editorPickLabel,
+        40
+      ),
     },
     banner: {
-      enabled:
-        typeof banner.enabled === "boolean" ? banner.enabled : defaults.banner.enabled,
+      enabled: bool(banner.enabled, defaults.banner.enabled),
       message: textOr(banner.message, defaults.banner.message, 200),
       href: text(banner.href, defaults.banner.href, 500),
+      dismissible: bool(banner.dismissible, defaults.banner.dismissible),
     },
     welcomePopup: {
-      enabled:
-        typeof welcomePopup.enabled === "boolean"
-          ? welcomePopup.enabled
-          : defaults.welcomePopup.enabled,
+      enabled: bool(welcomePopup.enabled, defaults.welcomePopup.enabled),
       title: textOr(welcomePopup.title, defaults.welcomePopup.title, 120),
       description: text(
         welcomePopup.description,
@@ -185,12 +245,15 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
       code: text(welcomePopup.code, defaults.welcomePopup.code, 40),
       ctaLabel: textOr(welcomePopup.ctaLabel, defaults.welcomePopup.ctaLabel, 40),
       ctaHref: textOr(welcomePopup.ctaHref, defaults.welcomePopup.ctaHref, 500),
+      delaySeconds: wholeNumber(
+        welcomePopup.delaySeconds,
+        defaults.welcomePopup.delaySeconds,
+        0,
+        30
+      ),
     },
     vacation: {
-      enabled:
-        typeof vacation.enabled === "boolean"
-          ? vacation.enabled
-          : defaults.vacation.enabled,
+      enabled: bool(vacation.enabled, defaults.vacation.enabled),
       message: textOr(vacation.message, defaults.vacation.message, 300),
     },
   };

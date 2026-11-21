@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { useSiteSettings } from "@/components/providers/site-settings-provider";
 import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
@@ -43,6 +44,7 @@ export function CatalogFilters({
   onClear,
 }: CatalogFiltersProps) {
   const uid = React.useId().replace(/:/g, "");
+  const { settings } = useSiteSettings();
 
   return (
     <div className="flex flex-col">
@@ -177,7 +179,7 @@ export function CatalogFilters({
       <section aria-label="Price">
         <div className="mb-4 flex items-center justify-between gap-2">
           <p className="text-xs font-semibold tracking-wider uppercase">Price</p>
-          <p className="text-[11px] text-muted-foreground">USD</p>
+          <p className="text-[11px] text-muted-foreground">{settings.currency}</p>
         </div>
         <PriceFilter
           key={`${query.min}-${query.max}`}
@@ -190,7 +192,7 @@ export function CatalogFilters({
 
       <Separator className="my-5" />
 
-      <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <label htmlFor={`${uid}-sale-only`} className="cursor-pointer text-sm font-medium">
             On sale only

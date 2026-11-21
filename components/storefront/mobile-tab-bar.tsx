@@ -7,6 +7,7 @@ import { Heart, Home, Search, ShoppingBag, Store } from "lucide-react";
 import { useCart } from "@/components/providers/cart-provider";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { SearchDialog } from "@/components/storefront/search-dialog";
+import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -15,7 +16,7 @@ const TABS = [
 ];
 
 /** iOS/Android-style bottom tab bar — keeps mobile navigation one thumb away. */
-export function MobileTabBar() {
+export function MobileTabBar({ products }: { products?: Product[] } = {}) {
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = React.useState(false);
   const { count, openCart } = useCart();
@@ -96,7 +97,7 @@ export function MobileTabBar() {
         </div>
       </nav>
 
-      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} products={products} />
     </>
   );
 }

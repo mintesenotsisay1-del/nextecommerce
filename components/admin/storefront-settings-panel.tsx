@@ -10,6 +10,8 @@ import {
   Megaphone,
   RotateCcw,
   Save,
+  ShieldCheck,
+  Sparkles,
   Store,
   Truck,
   type LucideIcon,
@@ -25,11 +27,11 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useSiteSettings } from "@/components/providers/site-settings-provider";
+import { formatPrice } from "@/lib/format";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
@@ -157,6 +159,46 @@ function SectionHeading({
   );
 }
 
+function ToggleField({
+  label,
+  hint,
+  id,
+  checked,
+  onCheckedChange,
+  disabled,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  id: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 rounded-xl border bg-muted/20 px-3 py-2.5",
+        className
+      )}
+    >
+      <div className="min-w-0">
+        <Label htmlFor={id} className="text-xs">
+          {label}
+        </Label>
+        {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
+      </div>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={(value) => onCheckedChange(value === true)}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
 function BannerPreview({ banner }: { banner: SiteBannerSettings }) {
   if (!banner.enabled) {
     return (
@@ -167,8 +209,16 @@ function BannerPreview({ banner }: { banner: SiteBannerSettings }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-foreground px-4 py-2 text-center text-[10px] font-semibold tracking-[0.14em] text-background uppercase sm:text-[11px]">
+    <div className="relative overflow-hidden rounded-xl bg-foreground px-8 py-2 text-center text-[10px] font-semibold tracking-[0.14em] text-background uppercase sm:text-[11px]">
       {banner.message || "Your announcement message"}
+      {banner.dismissible && (
+        <span
+          aria-hidden
+          className="absolute top-1/2 right-2 -translate-y-1/2 text-sm leading-none text-background/60"
+        >
+          ×
+        </span>
+      )}
     </div>
   );
 }
@@ -237,48 +287,139 @@ function VacationPreview({ vacation }: { vacation: SiteVacationSettings }) {
   );
 }
 
-function HeroPreview({ hero }: { hero: SiteHeroSettings }) {
+function HeroPreview({
+  hero,
+  imageSrc,
+  productName,
+  freeShippingThreshold,
+}: {
+  hero: SiteHeroSettings;
+  imageSrc: string;
+  productName: string;
+  freeShippingThreshold: number;
+}) {
   const title = splitHighlight(hero.title, hero.highlight);
+  const imageLeft = hero.imagePosition === "left";
+  const shippingText =
+    hero.shippingText ||
+    (freeShippingThreshold === 0
+      ? "Free shipping on all orders"
+      : `Free shipping over ${formatPrice(freeShippingThreshold)}`);
+  const badges = [
+    { icon: Truck, text: shippingText },
+    { icon: RotateCcw, text: hero.returnsText },
+    { icon: ShieldCheck, text: hero.authenticText },
+  ].filter((badge) => badge.text.trim().length > 0);
 
   return (
     <div className="rounded-2xl border bg-muted/30 p-4">
-      <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-        Hero preview
-      </p>
-      <div className="mt-3">
-        {hero.badge && (
-          <Badge variant="outline" className="rounded-full text-[10px]">
-            {hero.badge}
-          </Badge>
-        )}
-        <p className="font-heading mt-2 text-xl leading-tight font-semibold text-balance">
-          {title.before}
-          {title.match && <span className="text-muted-foreground">{title.match}</span>}
-          {title.after}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+          Hero preview
         </p>
-        {hero.description && (
-          <p className="mt-1 line-clamp-2 max-w-lg text-xs text-muted-foreground">
-            {hero.description}
-          </p>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-primary px-3 py-1 text-[11px] text-primary-foreground">
-            {hero.primaryLabel}
-          </span>
-          {hero.secondaryLabel && hero.secondaryHref && (
-            <span className="rounded-full border px-3 py-1 text-[11px]">
-              {hero.secondaryLabel}
-            </span>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            hero.enabled
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          {hero.enabled ? "Visible" : "Hidden"}
+        </span>
+      </div>
+
+      {!hero.enabled ? (
+        <p className="mt-3 rounded-xl border border-dashed px-3 py-2 text-[11px] text-muted-foreground">
+          Hero is off — the home page starts with the brand strip.
+        </p>
+      ) : (
+        <div
+          className={cn(
+            "mt-3 grid items-center gap-4",
+            hero.showImage && "sm:grid-cols-2"
+          )}
+        >
+          <div className={cn(hero.showImage && imageLeft && "sm:order-2")}>
+            {hero.badge && (
+              <Badge variant="outline" className="rounded-full text-[10px]">
+                {hero.badge}
+              </Badge>
+            )}
+            <p className="font-heading mt-2 text-xl leading-tight font-semibold text-balance">
+              {title.before}
+              {title.match && <span className="text-muted-foreground">{title.match}</span>}
+              {title.after}
+            </p>
+            {hero.description && (
+              <p className="mt-1 line-clamp-2 max-w-lg text-xs text-muted-foreground">
+                {hero.description}
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full bg-primary px-3 py-1 text-[11px] text-primary-foreground">
+                {hero.primaryLabel}
+              </span>
+              {hero.secondaryLabel && hero.secondaryHref && (
+                <span className="rounded-full border px-3 py-1 text-[11px]">
+                  {hero.secondaryLabel}
+                </span>
+              )}
+            </div>
+            {hero.showTrustBadges && badges.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+                {badges.map(({ icon: Icon, text }, index) => (
+                  <span key={`${text}-${index}`} className="flex items-center gap-1">
+                    <Icon className="size-3" aria-hidden /> {text}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {hero.showImage && (
+            <div
+              className={cn(
+                "relative aspect-square overflow-hidden rounded-2xl border bg-background",
+                imageLeft && "sm:order-1"
+              )}
+            >
+              {imageSrc ? (
+                // Admin-entered URLs and local catalogue images both appear here.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imageSrc}
+                  alt={hero.imageAlt || productName || "Hero preview"}
+                  className={cn(
+                    "size-full",
+                    hero.imageFit === "contain" ? "object-contain" : "object-cover"
+                  )}
+                />
+              ) : (
+                <span className="flex size-full items-center justify-center text-muted-foreground">
+                  <ImageIcon className="size-6" aria-hidden />
+                </span>
+              )}
+              {hero.showEditorPick && productName && (
+                <div className="absolute bottom-2 left-2 max-w-[80%] rounded-xl bg-background/90 p-2 shadow-sm ring-1 ring-foreground/10 backdrop-blur">
+                  <p className="text-[8px] font-semibold tracking-wider text-muted-foreground uppercase">
+                    {hero.editorPickLabel}
+                  </p>
+                  <p className="truncate text-[10px] font-medium">{productName}</p>
+                </div>
+              )}
+            </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 /**
- * Admin editor for the company name, announcement banner, welcome popup,
- * holiday mode and home-page hero. Saves the single `site_settings` row to
+ * Admin editor for the company name, shipping, announcement banner, welcome
+ * popup, holiday mode and home-page hero (copy, photo layout, trust badges
+ * and the editor's-pick card). Saves the single `site_settings` row to
  * Supabase when configured; otherwise keeps the change in the provider and
  * localStorage for the demo session.
  */
@@ -310,6 +451,16 @@ export function StorefrontSettingsPanel({
         .sort((a, b) => a.label.localeCompare(b.label)),
     [products]
   );
+
+  const heroPreviewProduct = React.useMemo(() => {
+    const match = products.find(
+      ({ product }) => product.slug === draft.hero.featuredSlug
+    );
+    return (match ?? products[0])?.product;
+  }, [products, draft.hero.featuredSlug]);
+
+  const heroPreviewImage =
+    draft.hero.image || heroPreviewProduct?.images[0] || "";
 
   const featuredLabel = React.useMemo(() => {
     if (!draft.hero.featuredSlug) return "Automatic (first featured pair)";
@@ -421,8 +572,9 @@ export function StorefrontSettingsPanel({
           <div>
             <h2 className="font-heading text-lg font-semibold">Storefront</h2>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-              Edit the company name, announcement banner, welcome popup, holiday mode and
-              home-page hero. Save once and the storefront updates everywhere.
+              Edit the company name, currency, shipping, announcement banner, welcome popup,
+              holiday mode and home-page hero — including photo layout, trust badges and the
+              editor’s pick card. Save once and the storefront updates everywhere.
             </p>
           </div>
           <Badge variant="outline" className="rounded-full">
@@ -612,6 +764,15 @@ export function StorefrontSettingsPanel({
             </Field>
           </div>
 
+          <ToggleField
+            id="banner-dismissible"
+            label="Let shoppers dismiss the banner"
+            hint="Turning this off keeps the strip visible on every page view."
+            checked={draft.banner.dismissible}
+            onCheckedChange={(checked) => updateBanner({ dismissible: checked })}
+            disabled={!canManage}
+          />
+
           <BannerPreview banner={draft.banner} />
         </section>
 
@@ -715,6 +876,30 @@ export function StorefrontSettingsPanel({
                 placeholder="/products"
               />
             </Field>
+
+            <Field
+              label="Delay before showing (seconds)"
+              htmlFor="popup-delay"
+              className="sm:col-span-2"
+              hint="0 opens the offer as soon as the page loads. Maximum 30 seconds."
+            >
+              <Input
+                id="popup-delay"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                max="30"
+                step="1"
+                value={draft.welcomePopup.delaySeconds}
+                onChange={(event) => {
+                  const val = Number(event.target.value);
+                  if (Number.isFinite(val) && val >= 0 && val <= 30) {
+                    updateWelcomePopup({ delaySeconds: Math.round(val) });
+                  }
+                }}
+                disabled={!canManage}
+              />
+            </Field>
           </div>
 
           <WelcomePopupPreview popup={draft.welcomePopup} />
@@ -765,8 +950,91 @@ export function StorefrontSettingsPanel({
           <SectionHeading
             icon={ImageIcon}
             title="Home page hero"
-            description="Headline, calls to action, photo and the featured pair in the price chip."
+            description="Headline, buttons, photo layout, trust badges and the featured pair in the price chip."
+            action={
+              <div className="flex items-center gap-2">
+                <Label htmlFor="hero-enabled" className="text-xs">
+                  Show hero
+                </Label>
+                <Switch
+                  id="hero-enabled"
+                  checked={draft.hero.enabled}
+                  onCheckedChange={(checked) => updateHero({ enabled: checked === true })}
+                  disabled={!canManage}
+                />
+              </div>
+            }
           />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Photo position"
+              htmlFor="hero-image-position"
+              hint="Desktop layout. Mobile always stacks the copy above the photo."
+            >
+              <Select
+                value={draft.hero.imagePosition}
+                onValueChange={(value) =>
+                  updateHero({ imagePosition: value === "left" ? "left" : "right" })
+                }
+                disabled={!canManage}
+              >
+                <SelectTrigger
+                  id="hero-image-position"
+                  className="w-full"
+                  aria-label="Hero photo position"
+                >
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {draft.hero.imagePosition === "left"
+                      ? "Photo on the left"
+                      : "Photo on the right"}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="right">Photo on the right</SelectItem>
+                  <SelectItem value="left">Photo on the left</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field
+              label="Photo fit"
+              htmlFor="hero-image-fit"
+              hint="Contain shows the whole cut-out; cover fills the frame."
+            >
+              <Select
+                value={draft.hero.imageFit}
+                onValueChange={(value) =>
+                  updateHero({ imageFit: value === "contain" ? "contain" : "cover" })
+                }
+                disabled={!canManage}
+              >
+                <SelectTrigger
+                  id="hero-image-fit"
+                  className="w-full"
+                  aria-label="Hero photo fit"
+                >
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {draft.hero.imageFit === "contain" ? "Contain (whole photo)" : "Cover (fill frame)"}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cover">Cover (fill frame)</SelectItem>
+                  <SelectItem value="contain">Contain (whole photo)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <ToggleField
+              id="hero-show-image"
+              label="Show hero photo"
+              hint="Turn off for a text-only hero that uses the full width."
+              checked={draft.hero.showImage}
+              onCheckedChange={(checked) => updateHero({ showImage: checked })}
+              disabled={!canManage}
+              className="sm:col-span-2"
+            />
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Eyebrow badge" htmlFor="hero-badge" hint="Leave blank to hide it.">
@@ -926,7 +1194,101 @@ export function StorefrontSettingsPanel({
             </Field>
           </div>
 
-          <HeroPreview hero={draft.hero} />
+          <div className="flex flex-col gap-3 rounded-xl border bg-muted/20 p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="size-4 text-muted-foreground" aria-hidden />
+              <p className="text-xs font-semibold">Trust badges</p>
+            </div>
+            <ToggleField
+              id="hero-trust-badges"
+              label="Show trust badges"
+              hint="The small shipping, returns and authenticity strip under the buttons."
+              checked={draft.hero.showTrustBadges}
+              onCheckedChange={(checked) => updateHero({ showTrustBadges: checked })}
+              disabled={!canManage}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Shipping badge"
+                htmlFor="hero-shipping-text"
+                className="sm:col-span-2"
+                hint="Leave blank to build this from the free-shipping threshold and currency."
+              >
+                <Input
+                  id="hero-shipping-text"
+                  value={draft.hero.shippingText}
+                  onChange={(event) => updateHero({ shippingText: event.target.value })}
+                  maxLength={80}
+                  disabled={!canManage}
+                  placeholder="Free shipping over $250"
+                />
+              </Field>
+              <Field
+                label="Returns badge"
+                htmlFor="hero-returns-text"
+                hint="Leave blank to hide this badge."
+              >
+                <Input
+                  id="hero-returns-text"
+                  value={draft.hero.returnsText}
+                  onChange={(event) => updateHero({ returnsText: event.target.value })}
+                  maxLength={80}
+                  disabled={!canManage}
+                  placeholder="30-day returns"
+                />
+              </Field>
+              <Field
+                label="Authenticity badge"
+                htmlFor="hero-authentic-text"
+                hint="Leave blank to hide this badge."
+              >
+                <Input
+                  id="hero-authentic-text"
+                  value={draft.hero.authenticText}
+                  onChange={(event) => updateHero({ authenticText: event.target.value })}
+                  maxLength={80}
+                  disabled={!canManage}
+                  placeholder="100% authentic"
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-xl border bg-muted/20 p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" aria-hidden />
+              <p className="text-xs font-semibold">Editor’s pick card</p>
+            </div>
+            <ToggleField
+              id="hero-editor-pick"
+              label="Show product card"
+              hint="The floating card with the featured product name, price and View link."
+              checked={draft.hero.showEditorPick}
+              onCheckedChange={(checked) => updateHero({ showEditorPick: checked })}
+              disabled={!canManage}
+            />
+            <Field
+              label="Card label"
+              htmlFor="hero-editor-pick-label"
+              hint="Shown above the product name in the card."
+            >
+              <Input
+                id="hero-editor-pick-label"
+                value={draft.hero.editorPickLabel}
+                onChange={(event) => updateHero({ editorPickLabel: event.target.value })}
+                maxLength={40}
+                disabled={!canManage}
+                placeholder="Editor’s pick"
+              />
+            </Field>
+          </div>
+
+          <HeroPreview
+            hero={draft.hero}
+            imageSrc={heroPreviewImage}
+            productName={heroPreviewProduct?.name ?? ""}
+            freeShippingThreshold={draft.freeShippingThreshold}
+          />
         </section>
 
         <footer className="flex flex-wrap items-center gap-2 border-t pt-4">

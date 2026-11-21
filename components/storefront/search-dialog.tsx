@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { getAllProducts } from "@/lib/data/products";
 import { formatPrice } from "@/lib/format";
 import Image from "next/image";
+import type { Product } from "@/lib/types";
 
 const QUICK_LINKS = [
   { label: "Sneakers", href: "/products?cat=sneakers" },
@@ -20,26 +21,80 @@ const QUICK_LINKS = [
   { label: "Sale", href: "/products?sale=1" },
 ];
 
+let cachedProducts: Product[] | null = null;
+let fetchPromise: Promise<Product[]> | null = null;
+
+async function fetchProducts(): Promise<Product[]> {
+  if (fetchPromise) return fetchPromise;
+  fetchPromise = fetch("/api/products")
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<Product[]>;
+    })
+    .then((data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        cachedProducts = data;
+        return data;
+      }
+      return cachedProducts ?? getAllProducts();
+    })
+    .catch((err) => {
+      console.error("[SearchDialog] Failed to fetch products:", err);
+      return cachedProducts ?? getAllProducts();
+    })
+    .finally(() => {
+      fetchPromise = null;
+    });
+  return fetchPromise;
+}
+
 export function SearchDialog({
   open,
   onOpenChange,
+  products: initialProducts,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  products?: Product[];
 }) {
   const [term, setTerm] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  const [fetchedProducts, setFetchedProducts] = React.useState<Product[] | null>(() => cachedProducts);
+
+  React.useEffect(() => {
+    let active = true;
+    if (open || !cachedProducts) {
+      fetchProducts().then((data) => {
+        if (active && data && data.length > 0) {
+          setFetchedProducts(data);
+        }
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
+  const products =
+    initialProducts && initialProducts.length > 0
+      ? initialProducts
+      : fetchedProducts && fetchedProducts.length > 0
+      ? fetchedProducts
+      : getAllProducts();
+
   const results = React.useMemo(() => {
     const q = term.trim().toLowerCase();
     if (!q) return [];
-    return getAllProducts()
-      .filter((p) =>
-        `${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase().includes(q)
-      )
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return products
+      .filter((p) => {
+        const haystack = `${p.name} ${p.brand} ${p.category} ${p.color ?? ""} ${p.shortDescription ?? ""}`.toLowerCase();
+        return haystack.includes(q) || tokens.every((tok) => haystack.includes(tok));
+      })
       .slice(0, 8);
-  }, [term]);
+  }, [term, products]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -94,7 +149,7 @@ export function SearchDialog({
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             placeholder="Search sneakers, boots, heels…"
-            className="h-9 min-w-0 flex-1 border-transparent bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+            className="h-11 flex-1 rounded-full border bg-background px-4 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           />
           {term && (
             <button
@@ -114,28 +169,44 @@ export function SearchDialog({
         <div className="max-h-[min(70dvh,calc(100dvh-9rem))] overflow-y-auto overscroll-contain">
           {results.length > 0 && (
             <div className="p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-              {results.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => go(`/products/${p.slug}`)}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted active:bg-muted sm:gap-3 sm:px-3 sm:py-2"
-                >
-                  <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-12">
-                    <Image src={p.images[0]} alt={p.name} fill sizes="48px" className="object-cover" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{p.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {p.brand} · {p.color}
+              {results.map((p) => {
+                const imageSrc = p.images?.[0] || "/img/products/am1-orange-white.jpg";
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => go(`/products/${p.slug}`)}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted active:bg-muted sm:gap-3 sm:px-3 sm:py-2"
+                  >
+                    <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-12">
+                      <Image
+                        src={imageSrc}
+                        alt={p.name}
+                        fill
+                        sizes="48px"
+                        className="object-cover"
+                      />
                     </span>
-                  </span>
-                  <span className="shrink-0 text-[13px] font-semibold sm:text-sm">
-                    {formatPrice(p.price)}
-                  </span>
-                  <ArrowRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />
-                </button>
-              ))}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{p.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {p.brand}{p.color ? ` · ${p.color}` : ""}
+                      </span>
+                    </span>
+                    <div className="flex shrink-0 flex-col items-end">
+                      <span className="text-[13px] font-semibold sm:text-sm">
+                        {formatPrice(p.price)}
+                      </span>
+                      {p.compareAtPrice && p.compareAtPrice > p.price ? (
+                        <span className="text-[11px] text-muted-foreground line-through">
+                          {formatPrice(p.compareAtPrice)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <ArrowRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={submitSearch}
@@ -181,7 +252,7 @@ export function SearchDialog({
                   <kbd className="rounded-md bg-background px-1.5 py-0.5 font-mono">K</kbd> to open this
                   anywhere
                 </span>
-                <span className="font-medium">{getAllProducts().length} shoes in stock</span>
+                <span className="font-medium">{products.length} shoes in stock</span>
               </p>
             </div>
           )}

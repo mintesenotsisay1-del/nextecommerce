@@ -38,7 +38,7 @@ you drop in your Supabase project keys.
 - Order search, status filter, sorting, detail dialog, clickable fulfilment pipeline, customer spend summary and CSV export
 - Customer profiles at `/admin/customers/[key]` — lifetime KPIs, six-month spend trend, contact/shipping details, top products, category mix, and searchable order history with CSV export and inline status updates
 - Insights tab with top products by revenue, category mix, repeat rate and period metrics
-- Storefront tab: edit the company name, announcement banner (enabled, message, link), welcome discount popup (enabled, headline, description, code, CTA), holiday/vacation checkout warning and home-page hero (badge, headline, highlighted word, description, CTA labels/links, image, featured product) with live previews
+- Storefront tab: edit the company name, currency, free-shipping threshold, announcement banner (enabled, message, link, dismissible), welcome discount popup (enabled, headline, description, code, CTA, delay), holiday/vacation checkout warning and home-page hero (visibility, badge, headline, highlighted word, description, CTA labels/links, photo position/fit, trust badges, editor’s-pick card, image, featured product) with live previews
 - Admin writes are gated by `profiles.is_admin`; demo-mode edits stay in the session, live mode persists through Supabase RLS
 
 **Supabase**

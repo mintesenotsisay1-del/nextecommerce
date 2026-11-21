@@ -7,9 +7,17 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Truck, Ship, Wrench } from "lucide-react";
+import { useSiteSettings } from "@/components/providers/site-settings-provider";
+import { formatPrice } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
 export function ProductAccordions({ product }: { product: Product }) {
+  const { settings } = useSiteSettings();
+  const shipping =
+    settings.freeShippingThreshold > 0
+      ? `Free express shipping on orders over ${formatPrice(settings.freeShippingThreshold)} — a flat delivery fee applies below that.`
+      : "Free express shipping on every order.";
+
   return (
     <Accordion
       className="mt-10 rounded-3xl border bg-card px-5"
@@ -38,8 +46,7 @@ export function ProductAccordions({ product }: { product: Product }) {
         <AccordionContent className="text-sm text-muted-foreground">
           <p className="flex items-start gap-2">
             <Ship className="mt-0.5 size-4 shrink-0" aria-hidden />
-            Free express shipping on orders over $250 — otherwise a flat $9.90. Orders placed before
-            2 pm ship the same day from our local warehouse.
+            {shipping} Orders placed before 2 pm ship the same day from our local warehouse.
           </p>
           <p className="mt-2">
             Not perfect? Return within 30 days — worn or unworn. Prepaid label included in every box.

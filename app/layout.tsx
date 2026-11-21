@@ -12,7 +12,7 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { MobileTabBar } from "@/components/storefront/mobile-tab-bar";
 import { WelcomePopup } from "@/components/storefront/welcome-popup";
 import { loadSiteSettings } from "@/lib/data/site-settings";
-import { getAllProducts } from "@/lib/data/products";
+import { getCatalogProducts } from "@/lib/data/storefront-products";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -50,8 +50,11 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const wishlistAliases = getAllProducts().map(({ id, slug }) => ({ id, slug }));
-  const settings = await loadSiteSettings();
+  const [catalogProducts, settings] = await Promise.all([
+    getCatalogProducts(),
+    loadSiteSettings(),
+  ]);
+  const wishlistAliases = catalogProducts.map(({ id, slug }) => ({ id, slug }));
 
   return (
     <html
@@ -65,11 +68,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <WishlistProvider productAliases={wishlistAliases}>
               <RecentlyViewedProvider>
                 <AnnouncementBanner />
-                <SiteHeader />
+                <SiteHeader products={catalogProducts} />
                 <main className="flex-1 pb-20 md:pb-0">{children}</main>
                 <SiteFooter />
                 <CartDrawer />
-                <MobileTabBar />
+                <MobileTabBar products={catalogProducts} />
                 <WelcomePopup />
                 <Toaster position="bottom-center" richColors expand />
               </RecentlyViewedProvider>

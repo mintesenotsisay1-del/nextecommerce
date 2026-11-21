@@ -34,6 +34,7 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { SearchDialog } from "@/components/storefront/search-dialog";
+import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -47,7 +48,7 @@ const NAV_LINKS = [
 
 type UserData = { email: string; name?: string } | null;
 
-export function SiteHeader() {
+export function SiteHeader({ products }: { products?: Product[] } = {}) {
   const [scrolled, setScrolled] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [user, setUser] = React.useState<UserData>(null);
@@ -307,7 +308,7 @@ export function SiteHeader() {
         </div>
       </header>
 
-      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} products={products} />
     </>
   );
 }

@@ -20,7 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ProductsPage() {
-  const products = await getCatalogProducts();
+  const [products, settings] = await Promise.all([
+    getCatalogProducts(),
+    loadSiteSettings(),
+  ]);
   const brands = Array.from(new Set(products.map((product) => product.brand))).sort();
   const fromPrice = Math.min(...products.map((product) => product.price));
   const categoryCount = new Set(products.map((product) => product.category)).size;
@@ -46,7 +49,7 @@ export default async function ProductsPage() {
 
       <header className="mt-4 mb-5 sm:mt-5 sm:mb-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
-          <div className="max-w-2xl">
+          {/* <div className="max-w-2xl">
             <p className="text-[11px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
               The collection · Autumn 2026
             </p>
@@ -64,9 +67,9 @@ export default async function ProductsPage() {
               <span aria-hidden>·</span>
               <span>from {formatPrice(fromPrice)}</span>
             </p>
-          </div>
+          </div> */}
 
-          <dl className="hidden shrink-0 grid-cols-3 gap-2 sm:grid sm:gap-3 lg:w-[21rem]">
+          {/* <dl className="hidden shrink-0 grid-cols-3 gap-2 sm:grid sm:gap-3 lg:w-[21rem]">
             {stats.map((stat) => (
               <div
                 key={stat.label}
@@ -80,12 +83,15 @@ export default async function ProductsPage() {
                 </dd>
               </div>
             ))}
-          </dl>
+          </dl> */}
         </div>
 
         <div className="mt-4 hidden flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-muted-foreground sm:flex">
           <span className="inline-flex items-center gap-1.5">
-            <Truck className="size-3.5" aria-hidden /> Free shipping over $250
+            <Truck className="size-3.5" aria-hidden />{" "}
+            {settings.freeShippingThreshold > 0
+              ? `Free shipping over ${formatPrice(settings.freeShippingThreshold, settings.currency)}`
+              : "Free shipping on all orders"}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <RotateCcw className="size-3.5" aria-hidden /> 30-day returns
@@ -124,18 +130,22 @@ function ProductsSkeleton() {
         ))}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
         <div className="hidden flex-col gap-4 lg:flex">
           {Array.from({ length: 8 }, (_, index) => (
             <Skeleton key={index} className="h-8 w-full rounded-lg" />
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-6 sm:gap-y-8 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-6 sm:gap-x-4 sm:gap-y-7 lg:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 9 }, (_, index) => (
             <div key={index} className="flex flex-col gap-2">
-              <Skeleton className="aspect-[4/5] w-full rounded-2xl" />
-              <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="aspect-[3/4] w-full rounded-xl sm:rounded-2xl" />
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <Skeleton className="h-2.5 w-1/3" />
+                <Skeleton className="h-2.5 w-1/4" />
+              </div>
+              <Skeleton className="h-3.5 w-4/5" />
+              <Skeleton className="h-4 w-1/2" />
             </div>
           ))}
         </div>

@@ -327,7 +327,7 @@ export function CatalogClient({ products }: { products: Product[] }) {
             aria-label="Search products"
             enterKeyHint="search"
             autoComplete="off"
-            className="h-11 rounded-full border-border bg-background pr-12 pl-10 text-base shadow-none sm:h-10 sm:pr-24 sm:text-xs"
+            className="h-11 rounded-full border-transparent bg-muted/70 pr-12 pl-10 text-base shadow-none transition-colors focus-visible:border-ring focus-visible:bg-background sm:h-10 sm:pr-24 sm:text-xs"
           />
           <div className="absolute inset-y-0 right-2 flex items-center gap-1">
             {search && (
@@ -540,12 +540,12 @@ export function CatalogClient({ products }: { products: Product[] }) {
       )}
 
       {/* ── Grid + desktop sidebar ──────────────────────────── */}
-      <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
         <aside
-          className="sticky top-24 hidden max-h-[calc(100dvh-7rem)] h-fit self-start overflow-y-auto lg:block"
+          className="sticky top-24 hidden max-h-[calc(100dvh-7rem)] h-fit self-start overflow-y-auto pr-2 lg:block"
           aria-label="Product filters"
         >
-          <div className="rounded-2xl border bg-card p-5">{filterPanel}</div>
+          {filterPanel}
         </aside>
 
         <div>
@@ -556,8 +556,8 @@ export function CatalogClient({ products }: { products: Product[] }) {
               data-catalog-grid={viewMode}
               className={cn(
                 viewMode === "grid"
-                  ? "grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-6 sm:gap-y-8 lg:grid-cols-2 xl:grid-cols-3"
-                  : "flex flex-col gap-3 sm:gap-4"
+                  ? "grid grid-cols-2 gap-x-2 gap-y-5 sm:gap-x-4 sm:gap-y-6 lg:grid-cols-2 xl:grid-cols-3"
+                  : "flex flex-col gap-2.5 sm:gap-3"
               )}
             >
               {results.map((product, index) => (

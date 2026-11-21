@@ -53,10 +53,10 @@ export function WelcomePopup() {
         // Non-fatal: the popup still opens for this page view.
       }
       setOpen(true);
-    }, 1200);
+    }, Math.max(0, popup.delaySeconds) * 1000);
 
     return () => window.clearTimeout(timer);
-  }, [hydrated, pathname, popup.enabled]);
+  }, [hydrated, pathname, popup.enabled, popup.delaySeconds]);
 
   function handleOpenChange(next: boolean) {
     setOpen(next);

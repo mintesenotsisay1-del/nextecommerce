@@ -34,7 +34,8 @@ export default async function ProductPage({
   if (!match) notFound();
   const { product, sourceId } = match;
 
-  const related = (await getStorefrontCatalogue())
+  const catalogue = await getStorefrontCatalogue();
+  const related = catalogue
     .filter((p) => p.id !== product.id)
     .sort((a, b) => {
       const score = (x: typeof a) =>
@@ -42,6 +43,12 @@ export default async function ProductPage({
       return score(b) - score(a);
     })
     .slice(0, 4);
+  const railProducts = catalogue.map(({ slug, name, price, images }) => ({
+    slug,
+    name,
+    price,
+    images,
+  }));
 
   return (
     <div className="pb-40 lg:pb-20">
@@ -90,7 +97,7 @@ export default async function ProductPage({
         </section>
       </div>
 
-      <RecentlyViewedRail excludeSlug={product.slug} />
+      <RecentlyViewedRail excludeSlug={product.slug} products={railProducts} />
     </div>
   );
 }
