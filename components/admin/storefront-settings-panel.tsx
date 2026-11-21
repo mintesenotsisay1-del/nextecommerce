@@ -23,6 +23,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +46,39 @@ type StorefrontSettingsPanelProps = {
   products: AdminProduct[];
   canManage: boolean;
 };
+
+const CURRENCIES = [
+  { code: "USD", name: "US Dollar" },
+  { code: "ETB", name: "Ethiopian Birr" },
+  { code: "EUR", name: "Euro" },
+  { code: "GBP", name: "British Pound" },
+  { code: "JPY", name: "Japanese Yen" },
+  { code: "CAD", name: "Canadian Dollar" },
+  { code: "AUD", name: "Australian Dollar" },
+  { code: "CHF", name: "Swiss Franc" },
+  { code: "CNY", name: "Chinese Yuan" },
+  { code: "INR", name: "Indian Rupee" },
+  { code: "BRL", name: "Brazilian Real" },
+  { code: "MXN", name: "Mexican Peso" },
+  { code: "ZAR", name: "South African Rand" },
+  { code: "NGN", name: "Nigerian Naira" },
+  { code: "KES", name: "Kenyan Shilling" },
+  { code: "EGP", name: "Egyptian Pound" },
+  { code: "GHS", name: "Ghanaian Cedi" },
+  { code: "TZS", name: "Tanzanian Shilling" },
+  { code: "UGX", name: "Ugandan Shilling" },
+  { code: "MAD", name: "Moroccan Dirham" },
+  { code: "AED", name: "UAE Dirham" },
+  { code: "SAR", name: "Saudi Riyal" },
+  { code: "TRY", name: "Turkish Lira" },
+  { code: "KRW", name: "South Korean Won" },
+  { code: "SGD", name: "Singapore Dollar" },
+  { code: "SEK", name: "Swedish Krona" },
+  { code: "NOK", name: "Norwegian Krone" },
+  { code: "DKK", name: "Danish Krone" },
+  { code: "PLN", name: "Polish Złoty" },
+  { code: "RUB", name: "Russian Ruble" },
+] as const;
 
 function friendlyError(message: string) {
   if (message.includes("row-level security") || message.includes("permission")) {
@@ -315,25 +349,57 @@ export function StorefrontSettingsPanel({
         <section className="flex flex-col gap-4 rounded-2xl border p-4 sm:p-5">
           <SectionHeading
             icon={Store}
-            title="Company name"
-            description="Shown in the header, footer, auth pages and page metadata."
+            title="Company name & currency"
+            description="Shown in the header, footer, auth pages and page metadata. Currency applies to all prices on the storefront."
           />
-          <Field
-            label="Company name"
-            htmlFor="store-company-name"
-            hint="Use an ampersand if you want the split-colour wordmark in the header."
-          >
-            <Input
-              id="store-company-name"
-              value={draft.companyName}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, companyName: event.target.value }))
-              }
-              maxLength={80}
-              disabled={!canManage}
-              placeholder="Sole & Stone"
-            />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Company name"
+              htmlFor="store-company-name"
+              hint="Use an ampersand if you want the split-colour wordmark in the header."
+            >
+              <Input
+                id="store-company-name"
+                value={draft.companyName}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, companyName: event.target.value }))
+                }
+                maxLength={80}
+                disabled={!canManage}
+                placeholder="Sole & Stone"
+              />
+            </Field>
+
+            <Field
+              label="Currency"
+              htmlFor="store-currency"
+              hint="Prices across the entire storefront use this currency."
+            >
+              <Select
+                value={draft.currency}
+                onValueChange={(value) =>
+                  value && setDraft((current) => ({ ...current, currency: value }))
+                }
+                disabled={!canManage}
+              >
+                <SelectTrigger id="store-currency" className="w-full" aria-label="Store currency">
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {CURRENCIES.find((c) => c.code === draft.currency)
+                      ? `${draft.currency} — ${CURRENCIES.find((c) => c.code === draft.currency)!.name}`
+                      : draft.currency}
+                  </span>
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <span className="font-mono text-xs text-muted-foreground w-10 inline-block">{c.code}</span>
+                      {" "}{c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
         </section>
 
         {/* ── Shipping ── */}

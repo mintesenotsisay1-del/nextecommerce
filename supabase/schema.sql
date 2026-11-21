@@ -91,6 +91,8 @@ create table if not exists public.site_settings (
 -- Add column to existing deployments that created the table before this change.
 alter table public.site_settings
   add column if not exists free_shipping_threshold numeric(10,2) not null default 250;
+alter table public.site_settings
+  add column if not exists currency text not null default 'USD';
 
 alter table public.site_settings enable row level security;
 do $$ begin

@@ -21,7 +21,7 @@ export const loadSiteSettings = cache(async (): Promise<SiteSettings> => {
   try {
     const { data, error } = await supabase
       .from("site_settings")
-      .select("id, company_name, hero, banner")
+      .select("id, company_name, currency, free_shipping_threshold, hero, banner")
       .limit(1)
       .maybeSingle();
 

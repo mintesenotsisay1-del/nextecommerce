@@ -31,6 +31,8 @@ export type SiteBannerSettings = {
 
 export type SiteSettings = {
   companyName: string;
+  /** ISO 4217 currency code, e.g. "USD", "ETB", "EUR". */
+  currency: string;
   /** Free shipping threshold in USD. Orders at or above this amount ship free. */
   freeShippingThreshold: number;
   hero: SiteHeroSettings;
@@ -39,6 +41,7 @@ export type SiteSettings = {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   companyName: "Sole & Stone",
+  currency: "USD",
   freeShippingThreshold: 250,
   hero: {
     badge: "Autumn Release 2026",
@@ -67,6 +70,7 @@ export const SITE_SETTINGS_STORAGE_KEY = "sole-stone-site-settings-v1";
 export type SiteSettingsRow = {
   id?: string;
   company_name?: string | null;
+  currency?: string | null;
   free_shipping_threshold?: number | null;
   hero?: unknown;
   banner?: unknown;
@@ -106,8 +110,13 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
       ? Math.round(rawThreshold)
       : defaults.freeShippingThreshold;
 
+  // Validate currency: must be a 3-letter uppercase ISO 4217-ish code.
+  const rawCurrency = typeof source.currency === "string" ? source.currency.trim().toUpperCase() : "";
+  const currency = /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : defaults.currency;
+
   return {
     companyName: textOr(source.companyName, defaults.companyName, 80),
+    currency,
     freeShippingThreshold,
     hero: {
       badge: text(hero.badge, defaults.hero.badge, 80),
@@ -136,6 +145,7 @@ export function rowToSettings(row: SiteSettingsRow | null | undefined): SiteSett
 
   return normalizeSiteSettings({
     companyName: row.company_name,
+    currency: row.currency,
     freeShippingThreshold: row.free_shipping_threshold,
     hero: row.hero,
     banner: row.banner,
@@ -145,6 +155,7 @@ export function rowToSettings(row: SiteSettingsRow | null | undefined): SiteSett
 export function settingsToRow(settings: SiteSettings) {
   return {
     company_name: settings.companyName,
+    currency: settings.currency,
     free_shipping_threshold: settings.freeShippingThreshold,
     hero: settings.hero,
     banner: settings.banner,

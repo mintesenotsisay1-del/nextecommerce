@@ -6,6 +6,7 @@ import {
   SITE_SETTINGS_STORAGE_KEY,
   type SiteSettings,
 } from "@/lib/site-settings";
+import { setActiveCurrency } from "@/lib/format";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 type SiteSettingsContextValue = {
@@ -33,7 +34,12 @@ export function SiteSettingsProvider({
   initialSettings: SiteSettings;
   children: React.ReactNode;
 }) {
-  const [settings, setSettingsState] = React.useState(initialSettings);
+  const [settings, setSettingsState] = React.useState(() => {
+    // Sync the module-level currency with the server-rendered initial value
+    // so the first client render uses the correct currency immediately.
+    setActiveCurrency(initialSettings.currency);
+    return initialSettings;
+  });
   const [hydrated, setHydrated] = React.useState(false);
 
   // Demo mode has no server row to read, so restore the last local save after
@@ -44,7 +50,11 @@ export function SiteSettingsProvider({
       if (!isSupabaseConfigured()) {
         try {
           const raw = window.localStorage.getItem(SITE_SETTINGS_STORAGE_KEY);
-          if (raw) setSettingsState(normalizeSiteSettings(JSON.parse(raw)));
+          if (raw) {
+            const restored = normalizeSiteSettings(JSON.parse(raw));
+            setActiveCurrency(restored.currency);
+            setSettingsState(restored);
+          }
         } catch {
           // Corrupted or blocked storage — keep the server defaults.
         }
@@ -57,6 +67,7 @@ export function SiteSettingsProvider({
 
   const setSettings = React.useCallback((next: SiteSettings) => {
     const normalized = normalizeSiteSettings(next);
+    setActiveCurrency(normalized.currency);
     setSettingsState(normalized);
     if (!isSupabaseConfigured()) persistLocally(normalized);
   }, []);
