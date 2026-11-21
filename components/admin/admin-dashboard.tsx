@@ -5,20 +5,30 @@ import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
+  BarChart3,
   Boxes,
   ChevronRight,
+  CircleDollarSign,
   Copy,
   DollarSign,
   Download,
   Eye,
   ImageIcon,
   Loader2,
+  PackageSearch,
   Pencil,
   Plus,
   Search,
   ShoppingBag,
+  Sparkles,
+  Store,
   Trash2,
   TrendingUp,
+  TriangleAlert,
+  UserCheck,
+  Users,
+  X,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -76,13 +86,35 @@ type FormState = {
   duplicate: boolean;
 };
 
-const STATUS_ITEMS: Record<OrderStatusFilter, string> = {
-  all: "All statuses",
-  ...(Object.fromEntries(ORDER_STATUSES.map((status) => [status, status])) as Record<
-    OrderStatus,
-    string
-  >),
+const ORDER_STATUS_ITEMS: Record<OrderStatus, string> = {
+  pending: "Pending",
+  processing: "Processing",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
 };
+
+const STATUS_DOT: Record<OrderStatus, string> = {
+  pending: "bg-amber-500",
+  processing: "bg-blue-500",
+  shipped: "bg-violet-500",
+  delivered: "bg-emerald-500",
+  cancelled: "bg-red-500",
+};
+
+const STATUS_SELECT_STYLES: Record<OrderStatus, string> = {
+  pending:
+    "border-amber-500/20 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/20",
+  processing:
+    "border-blue-500/20 bg-blue-500/10 text-blue-700 hover:bg-blue-500/15 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/20",
+  shipped:
+    "border-violet-500/20 bg-violet-500/10 text-violet-700 hover:bg-violet-500/15 dark:bg-violet-500/15 dark:text-violet-300 dark:hover:bg-violet-500/20",
+  delivered:
+    "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/20",
+  cancelled:
+    "border-red-500/20 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/20",
+};
+
 const ORDER_SORT_ITEMS: Record<OrderSort, string> = {
   newest: "Newest first",
   oldest: "Oldest first",
@@ -114,6 +146,15 @@ const CATEGORY_FILTERS: CategoryFilter[] = ["all", ...CATEGORY_ORDER];
 const ORDER_SORTS: OrderSort[] = ["newest", "oldest", "value"];
 const INVENTORY_SORTS: InventorySort[] = ["stock", "name", "price"];
 const HEALTH_FILTERS: HealthFilter[] = ["all", "healthy", "low", "critical"];
+
+const AVATAR_TONES = [
+  "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  "bg-teal-500/15 text-teal-700 dark:text-teal-300",
+];
 
 function productHealth(stock: number): Health {
   if (stock === 0) return "critical";
@@ -148,6 +189,22 @@ function metricChange(current: number, previous: number) {
     label: `${percent >= 0 ? "+" : ""}${percent.toFixed(1)}%`,
     up: percent >= 0,
   };
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const first = parts[0]?.charAt(0) ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.charAt(0) ?? "" : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+function hashString(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
 }
 
 function downloadOrdersCsv(orders: Order[]) {
@@ -240,7 +297,7 @@ function ProductThumb({
   return (
     <span
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted",
+        "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/5",
         className
       )}
     >
@@ -255,13 +312,80 @@ function ProductThumb({
   );
 }
 
-function MiniStat({ label, value, hint }: { label: string; value: string; hint: string }) {
+function CustomerAvatar({
+  name,
+  seed,
+  className,
+}: {
+  name: string;
+  seed: string;
+  className?: string;
+}) {
   return (
-    <Card size="sm">
-      <CardContent>
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="font-heading mt-1 text-xl font-semibold sm:text-2xl">{value}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+    <span
+      className={cn(
+        "flex size-9 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ring-1 ring-foreground/5 ring-inset",
+        AVATAR_TONES[hashString(seed || name) % AVATAR_TONES.length],
+        className
+      )}
+      aria-hidden
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+function StockBar({ stock, className }: { stock: number; className?: string }) {
+  const percent = stock === 0 ? 0 : Math.max(6, Math.min(100, (stock / 60) * 100));
+  return (
+    <span className={cn("block h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}>
+      <span
+        className={cn(
+          "block h-full rounded-full transition-all",
+          stock === 0 ? "bg-red-500" : stock < 15 ? "bg-amber-500" : "bg-emerald-500"
+        )}
+        style={{ width: `${percent}%` }}
+      />
+    </span>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  tone,
+  className,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  icon: LucideIcon;
+  tone: string;
+  className?: string;
+}) {
+  return (
+    <Card
+      size="sm"
+      className={cn("rounded-2xl transition-shadow hover:shadow-sm", className)}
+    >
+      <CardContent className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            {label}
+          </p>
+          <p className="font-heading mt-1.5 truncate text-xl font-semibold sm:text-2xl">{value}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+        </div>
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-xl sm:size-9",
+            tone
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+        </span>
       </CardContent>
     </Card>
   );
@@ -269,27 +393,220 @@ function MiniStat({ label, value, hint }: { label: string; value: string; hint: 
 
 function HealthBadge({ health }: { health: Health }) {
   return (
-    <Badge
-      variant="outline"
+    <span
       className={cn(
-        "rounded-full text-[10px] capitalize",
-        health === "healthy" && "border-transparent bg-emerald-500/10 text-emerald-700",
-        health === "low" && "border-transparent bg-amber-500/10 text-amber-700",
-        health === "critical" && "border-transparent bg-red-500/10 text-red-700"
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
+        health === "healthy" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+        health === "low" && "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        health === "critical" && "bg-red-500/10 text-red-700 dark:text-red-400"
       )}
     >
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          health === "healthy" && "bg-emerald-500",
+          health === "low" && "bg-amber-500",
+          health === "critical" && "bg-red-500"
+        )}
+        aria-hidden
+      />
       {health}
-    </Badge>
+    </span>
+  );
+}
+
+function PanelHeading({
+  icon: Icon,
+  title,
+  description,
+  action,
+  tone = "bg-primary/10 text-primary",
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+  tone?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-2xl",
+            tone
+          )}
+        >
+          <Icon className="size-5" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-heading text-lg font-semibold">{title}</h2>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function SearchBox({
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="relative w-full sm:max-w-sm">
+      <Search
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden
+      />
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-9 rounded-full bg-background pr-9 pl-9"
+        aria-label={ariaLabel}
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Clear search"
+          className="absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon = PackageSearch,
+  title,
+  description,
+  action,
+  className,
+}: {
+  icon?: LucideIcon;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-6 py-10 text-center",
+        className
+      )}
+    >
+      <span className="flex size-11 items-center justify-center rounded-2xl bg-background text-muted-foreground ring-1 ring-foreground/10">
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <p className="mt-3 text-sm font-semibold">{title}</p>
+      {description && (
+        <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
+      )}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
   );
 }
 
 function EmptyRow({ children, colSpan }: { children: React.ReactNode; colSpan: number }) {
   return (
-    <TableRow>
-      <TableCell colSpan={colSpan} className="py-10 text-center text-sm text-muted-foreground">
-        {children}
+    <TableRow className="hover:bg-transparent">
+      <TableCell colSpan={colSpan} className="py-10">
+        <div className="flex flex-col items-center justify-center gap-2 text-center">
+          <span className="flex size-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+            <Search className="size-4" aria-hidden />
+          </span>
+          <p className="text-sm font-semibold">No matches</p>
+          <p className="text-xs text-muted-foreground">{children}</p>
+        </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+function OrderStatusSelect({
+  order,
+  disabled,
+  className,
+  onStatusChange,
+}: {
+  order: Order;
+  disabled?: boolean;
+  className?: string;
+  onStatusChange: (status: OrderStatus) => void;
+}) {
+  return (
+    <Select
+      items={ORDER_STATUS_ITEMS}
+      value={order.status}
+      onValueChange={(value) => {
+        if (value) onStatusChange(value as OrderStatus);
+      }}
+      disabled={disabled}
+    >
+      <SelectTrigger
+        className={cn(
+          "h-8 w-32 gap-1.5 rounded-full border-transparent px-2.5 text-[11px] font-semibold capitalize shadow-none",
+          STATUS_SELECT_STYLES[order.status],
+          className
+        )}
+        aria-label={`Status for order ${order.id}`}
+      >
+        <span
+          className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[order.status])}
+          aria-hidden
+        />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align="end">
+        {ORDER_STATUSES.map((status) => (
+          <SelectItem key={status} value={status} className="capitalize">
+            {ORDER_STATUS_ITEMS[status]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function DashboardTab({
+  value,
+  label,
+  icon: Icon,
+  count,
+}: {
+  value: string;
+  label: string;
+  icon: LucideIcon;
+  count?: number;
+}) {
+  return (
+    <TabsTrigger
+      value={value}
+      className="group/tab h-9 shrink-0 gap-1.5 rounded-xl px-2.5 text-xs font-semibold data-active:bg-background data-active:shadow-sm sm:px-3"
+    >
+      <Icon
+        className="size-4 text-muted-foreground transition-colors group-data-[active]/tab:text-primary"
+        aria-hidden
+      />
+      <span>{label}</span>
+      {typeof count === "number" && (
+        <span className="rounded-full bg-background px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground ring-1 ring-foreground/5 transition-colors group-data-[active]/tab:bg-primary/10 group-data-[active]/tab:text-primary group-data-[active]/tab:ring-transparent">
+          {count}
+        </span>
+      )}
+    </TabsTrigger>
   );
 }
 
@@ -440,6 +757,19 @@ export function AdminDashboard({
       return orderSort === "oldest" ? delta : -delta;
     });
   }, [orders, orderQuery, orderStatus, orderSort]);
+
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<OrderStatusFilter, number> = {
+      all: orders.length,
+      pending: 0,
+      processing: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+    for (const order of orders) counts[order.status] += 1;
+    return counts;
+  }, [orders]);
 
   const catalogueStats = React.useMemo(() => {
     let units = 0;
@@ -650,48 +980,81 @@ export function AdminDashboard({
       value: formatPrice(rangeStats.revenue),
       icon: DollarSign,
       change: metricChange(rangeStats.revenue, previousStats.revenue),
+      tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     },
     {
       label: "Orders",
       value: String(rangeStats.orders),
       icon: ShoppingBag,
       change: metricChange(rangeStats.orders, previousStats.orders),
+      tone: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
     },
     {
       label: "Units sold",
       value: String(rangeStats.unitsSold),
       icon: Boxes,
       change: metricChange(rangeStats.unitsSold, previousStats.unitsSold),
+      tone: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
     },
     {
       label: "Avg order value",
       value: formatPrice(Math.round(rangeStats.avgOrderValue)),
       icon: TrendingUp,
       change: metricChange(rangeStats.avgOrderValue, previousStats.avgOrderValue),
+      tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     },
   ];
+
+  const orderStatusFilters: {
+    key: OrderStatusFilter;
+    label: string;
+    dot?: string;
+    count: number;
+  }[] = [
+    { key: "all", label: "All", count: statusCounts.all },
+    ...ORDER_STATUSES.map((status) => ({
+      key: status,
+      label: ORDER_STATUS_ITEMS[status],
+      dot: STATUS_DOT[status],
+      count: statusCounts[status],
+    })),
+  ];
+
+  const attentionCount = catalogueStats.low + catalogueStats.out;
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       {/* Workspace actions */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-xl text-xs text-muted-foreground">
-          {canManage
-            ? "Create and edit products, move orders through fulfilment and export the data your team needs."
-            : "You have read-only access. Sign in with an admin account to create products and update orders."}
-        </p>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <div className="flex flex-col gap-3 rounded-2xl border bg-card/70 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Sparkles className="size-4" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Operations workspace</p>
+            <p className="mt-0.5 max-w-xl text-xs text-muted-foreground">
+              {canManage
+                ? "Create and edit products, move orders through fulfilment and export the data your team needs."
+                : "You have read-only access. Sign in with an admin account to create products and update orders."}
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
           <Button
             variant="outline"
             onClick={() => downloadOrdersCsv(filteredOrders)}
             disabled={!filteredOrders.length}
             title="Export the orders matching the current search and status filters"
-            className="w-full sm:w-auto"
+            className="h-9 w-full rounded-full bg-background sm:w-auto"
           >
             <Download data-icon="inline-start" aria-hidden />
             Export orders
           </Button>
-          <Button onClick={openCreate} disabled={!canManage} className="w-full sm:w-auto">
+          <Button
+            onClick={openCreate}
+            disabled={!canManage}
+            className="h-9 w-full rounded-full sm:w-auto"
+          >
             <Plus data-icon="inline-start" aria-hidden />
             Add product
           </Button>
@@ -701,18 +1064,26 @@ export function AdminDashboard({
       {/* Performance header + KPIs */}
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="font-heading text-lg font-semibold">Performance</h2>
-            <p className="text-xs text-muted-foreground">
-              {rangeLabel} · compared with the previous {rangeDays} days
-            </p>
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-foreground/5 ring-1 ring-foreground/10">
+              <TrendingUp className="size-4" aria-hidden />
+            </span>
+            <div>
+              <h2 className="font-heading text-lg font-semibold">Performance</h2>
+              <p className="text-xs text-muted-foreground">
+                {rangeLabel} · compared with the previous {rangeDays} days
+              </p>
+            </div>
           </div>
           <Select
             items={RANGE_ITEMS}
             value={range}
             onValueChange={(value) => setRange(value as RangeKey)}
           >
-            <SelectTrigger size="sm" className="w-36" aria-label="Analytics period">
+            <SelectTrigger
+              className="h-9 w-36 rounded-full bg-background data-[size=default]:h-9"
+              aria-label="Analytics period"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
@@ -725,37 +1096,50 @@ export function AdminDashboard({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-          {kpis.map(({ label, value, icon: Icon, change }) => (
-            <Card key={label} size="sm">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
+          {kpis.map(({ label, value, icon: Icon, change, tone }) => (
+            <Card
+              key={label}
+              size="sm"
+              className="rounded-2xl transition-shadow hover:shadow-sm"
+            >
               <CardContent className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+                  <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                     {label}
                   </p>
-                  <p className="font-heading mt-1 truncate text-xl font-semibold sm:text-2xl">
+                  <p className="font-heading mt-1.5 truncate text-xl font-semibold sm:text-2xl">
                     {value}
                   </p>
-                  <p
-                    className={cn(
-                      "mt-1 flex flex-wrap items-center gap-1 text-[10px] font-medium sm:text-[11px]",
-                      change.up ? "text-emerald-600" : "text-red-600"
-                    )}
-                  >
-                    {change.label !== "New" &&
-                      (change.up ? (
-                        <ArrowUp className="size-3" aria-hidden />
-                      ) : (
-                        <ArrowDown className="size-3" aria-hidden />
-                      ))}
-                    {change.label}
-                    <span className="font-normal text-muted-foreground">
-                      vs previous {rangeDays}d
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                        change.up
+                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          : "bg-red-500/10 text-red-700 dark:text-red-400"
+                      )}
+                    >
+                      {change.label !== "New" &&
+                        (change.up ? (
+                          <ArrowUp className="size-3" aria-hidden />
+                        ) : (
+                          <ArrowDown className="size-3" aria-hidden />
+                        ))}
+                      {change.label}
                     </span>
-                  </p>
+                    <span className="text-[10px] text-muted-foreground">
+                      vs prev. {rangeDays}d
+                    </span>
+                  </div>
                 </div>
-                <span className="hidden size-8 shrink-0 items-center justify-center rounded-xl bg-muted sm:flex sm:size-10">
-                  <Icon className="size-4 sm:size-5" aria-hidden />
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-xl sm:size-9",
+                    tone
+                  )}
+                >
+                  <Icon className="size-4" aria-hidden />
                 </span>
               </CardContent>
             </Card>
@@ -764,125 +1148,182 @@ export function AdminDashboard({
       </section>
 
       {/* Revenue chart */}
-      <Card>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 className="font-heading text-lg font-semibold">Revenue trend</h2>
-              <p className="text-xs text-muted-foreground">
-                {rangeLabel} ·{" "}
-                {ordersLive
-                  ? "live orders"
-                  : chartUsesSample
-                    ? "sample trend (no demo orders in this period)"
-                    : "demo orders"}
-              </p>
+      <Card className="rounded-3xl">
+        <CardContent className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <TrendingUp className="size-5" aria-hidden />
+              </span>
+              <div>
+                <h2 className="font-heading text-lg font-semibold">Revenue trend</h2>
+                <p className="text-xs text-muted-foreground">
+                  {rangeLabel} ·{" "}
+                  {ordersLive
+                    ? "live orders"
+                    : chartUsesSample
+                      ? "sample trend (no demo orders in this period)"
+                      : "demo orders"}
+                </p>
+              </div>
             </div>
-            <Badge variant="outline" className="rounded-full">
-              {peak.value > 0 ? `Peak ${formatPrice(peak.value)}` : "No revenue yet"}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="rounded-full bg-background">
+                {peak.value > 0 ? `Peak ${formatPrice(peak.value)}` : "No revenue yet"}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="rounded-full bg-background text-muted-foreground"
+              >
+                {chart.length} intervals
+              </Badge>
+            </div>
           </div>
 
-          <div
-            className="flex h-44 items-end gap-1 sm:gap-2"
-            role="img"
-            aria-label={`Revenue trend for ${rangeLabel.toLowerCase()}`}
-          >
-            {chart.map((bucket, index) => (
-              <div
-                key={`${bucket.full}-${index}`}
-                className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
-              >
-                <span
-                  className={cn(
-                    "w-full truncate text-center text-[9px] font-medium text-muted-foreground sm:text-[10px]",
-                    chart.length > 8 && "hidden sm:block"
-                  )}
+          <div className="rounded-2xl border bg-muted/20 p-3 sm:p-4">
+            <div
+              className="flex h-44 items-end gap-1 sm:gap-2"
+              role="img"
+              aria-label={`Revenue trend for ${rangeLabel.toLowerCase()}`}
+            >
+              {chart.map((bucket, index) => (
+                <div
+                  key={`${bucket.full}-${index}`}
+                  className="group/bar flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
                 >
-                  {bucket.value > 0 ? formatPrice(bucket.value) : ""}
-                </span>
-                <div className="relative flex h-28 w-full items-end sm:h-32">
-                  <div
-                    className="w-full rounded-t-md bg-foreground/85 transition-colors hover:bg-foreground"
-                    style={{ height: `${Math.max(3, (bucket.value / maxRevenue) * 100)}%` }}
-                    title={`${bucket.full}: ${formatValue(bucket.value)}`}
-                  />
+                  <span
+                    className={cn(
+                      "w-full truncate text-center text-[9px] font-medium text-muted-foreground sm:text-[10px]",
+                      chart.length > 8 && "hidden sm:block"
+                    )}
+                  >
+                    {bucket.value > 0 ? formatPrice(bucket.value) : ""}
+                  </span>
+                  <div className="relative flex h-28 w-full items-end sm:h-32">
+                    <div
+                      className="w-full rounded-t-lg bg-gradient-to-t from-primary/45 to-primary transition-all group-hover/bar:from-primary/60 group-hover/bar:to-primary"
+                      style={{ height: `${Math.max(3, (bucket.value / maxRevenue) * 100)}%` }}
+                      title={`${bucket.full}: ${formatValue(bucket.value)}`}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "w-full truncate text-center text-[9px] text-muted-foreground sm:text-[10px]",
+                      chart.length > 8 && index % 2 === 1 && "invisible sm:visible"
+                    )}
+                  >
+                    {bucket.label}
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "w-full truncate text-center text-[9px] text-muted-foreground sm:text-[10px]",
-                    chart.length > 8 && index % 2 === 1 && "invisible sm:visible"
-                  )}
-                >
-                  {bucket.label}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Operations */}
-      <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
-        <TabsList className="scrollbar-hide w-full justify-start overflow-x-auto sm:w-fit">
-          <TabsTrigger value="orders" className="shrink-0">
-            Orders <span className="text-[10px] text-muted-foreground">{orders.length}</span>
-          </TabsTrigger>
-          <TabsTrigger value="inventory" className="shrink-0">
-            Inventory <span className="text-[10px] text-muted-foreground">{products.length}</span>
-          </TabsTrigger>
-          <TabsTrigger value="customers" className="shrink-0">
-            Customers <span className="text-[10px] text-muted-foreground">{customers.length}</span>
-          </TabsTrigger>
-          <TabsTrigger value="insights" className="shrink-0">
-            Insights
-          </TabsTrigger>
-          <TabsTrigger value="storefront" className="shrink-0">
-            Storefront
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)} className="gap-4">
+        <div className="sticky top-16 z-30 -mx-3 border-y bg-background/80 px-3 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <TabsList className="scrollbar-hide h-auto min-h-11 w-full justify-start gap-1 overflow-x-auto rounded-2xl border bg-muted/40 p-1 sm:w-fit">
+            <DashboardTab
+              value="orders"
+              label="Orders"
+              icon={ShoppingBag}
+              count={orders.length}
+            />
+            <DashboardTab
+              value="inventory"
+              label="Inventory"
+              icon={Boxes}
+              count={products.length}
+            />
+            <DashboardTab
+              value="customers"
+              label="Customers"
+              icon={Users}
+              count={customers.length}
+            />
+            <DashboardTab value="insights" label="Insights" icon={BarChart3} />
+            <DashboardTab value="storefront" label="Storefront" icon={Store} />
+          </TabsList>
+        </div>
 
         <TabsContent value="orders">
-          <Card>
-            <CardContent className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="relative w-full sm:min-w-52 sm:max-w-sm sm:flex-1">
-                  <Search
-                    className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <Input
-                    value={orderQuery}
-                    onChange={(event) => setOrderQuery(event.target.value)}
-                    placeholder="Search order, customer, email…"
-                    className="pl-9"
-                    aria-label="Search orders"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                  <Select
-                    items={STATUS_ITEMS}
-                    value={orderStatus}
-                    onValueChange={(value) => setOrderStatus(value as OrderStatusFilter)}
-                  >
-                    <SelectTrigger className="w-full capitalize sm:w-36" aria-label="Filter by order status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All statuses</SelectItem>
-                      {ORDER_STATUSES.map((status) => (
-                        <SelectItem key={status} value={status} className="capitalize">
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <Card className="rounded-3xl">
+            <CardContent className="flex flex-col gap-5">
+              <PanelHeading
+                icon={ShoppingBag}
+                title="Orders"
+                description={`${filteredOrders.length} of ${orders.length} orders · ${rangeLabel}`}
+                action={
+                  <span className="inline-flex items-center gap-1.5 self-start rounded-full border bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground sm:self-auto">
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        ordersLive ? "bg-emerald-500" : "bg-amber-500"
+                      )}
+                      aria-hidden
+                    />
+                    {ordersLive ? "Live orders" : "Demo orders"}
+                  </span>
+                }
+              />
+
+              <div className="scrollbar-hide -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+                {orderStatusFilters.map((filter) => {
+                  const active = orderStatus === filter.key;
+                  return (
+                    <button
+                      key={filter.key}
+                      type="button"
+                      onClick={() => setOrderStatus(filter.key)}
+                      aria-pressed={active}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                        active
+                          ? "border-foreground/10 bg-foreground text-background shadow-sm"
+                          : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      {filter.dot && (
+                        <span
+                          className={cn("size-1.5 rounded-full", filter.dot)}
+                          aria-hidden
+                        />
+                      )}
+                      {filter.label}
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 text-[9px] font-semibold",
+                          active
+                            ? "bg-background/20 text-background"
+                            : "bg-background text-muted-foreground"
+                        )}
+                      >
+                        {filter.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <SearchBox
+                  value={orderQuery}
+                  onChange={setOrderQuery}
+                  placeholder="Search order, customer, email…"
+                  ariaLabel="Search orders"
+                />
+                <div className="flex items-center gap-2 sm:ml-auto">
                   <Select
                     items={ORDER_SORT_ITEMS}
                     value={orderSort}
                     onValueChange={(value) => setOrderSort(value as OrderSort)}
                   >
-                    <SelectTrigger className="w-full sm:w-36" aria-label="Sort orders">
+                    <SelectTrigger
+                      className="h-9 w-full rounded-full bg-background data-[size=default]:h-9 sm:w-40"
+                      aria-label="Sort orders"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent align="end">
@@ -893,36 +1334,44 @@ export function AdminDashboard({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Badge
-                    variant="outline"
-                    className="col-span-2 justify-self-start rounded-full sm:col-span-1"
-                  >
-                    {filteredOrders.length} of {orders.length}
-                  </Badge>
+                  <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                    {filteredOrders.length} shown
+                  </span>
                 </div>
               </div>
 
               {/* Mobile order cards */}
-              <ul className="flex flex-col gap-2 md:hidden">
+              <ul className="flex flex-col gap-2.5 md:hidden">
                 {filteredOrders.map((order) => {
                   const units = order.items.reduce((sum, line) => sum + line.quantity, 0);
                   return (
-                    <li key={order.id} className="rounded-2xl border p-3">
+                    <li
+                      key={order.id}
+                      className="rounded-2xl border bg-background p-3.5 transition-shadow hover:shadow-sm"
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <button
                           type="button"
-                          className="font-mono text-xs font-medium underline-offset-4 hover:underline"
+                          className="truncate font-mono text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
                           onClick={() => setSelectedOrder(order)}
                         >
                           {order.id}
                         </button>
-                        <span className="shrink-0 text-[10px] text-muted-foreground">
-                          {formatDate(order.createdAt)}
-                        </span>
+                        <OrderStatusSelect
+                          order={order}
+                          disabled={!canManage}
+                          className="shrink-0"
+                          onStatusChange={(status) => void updateStatus(order, status)}
+                        />
                       </div>
-                      <div className="mt-2 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
+
+                      <div className="mt-3 flex items-start gap-2.5">
+                        <CustomerAvatar
+                          name={order.customer.fullName || "Guest"}
+                          seed={order.customer.email || order.id}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold">
                             {order.customer.fullName || "Guest"}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
@@ -932,150 +1381,137 @@ export function AdminDashboard({
                         <div className="shrink-0 text-right">
                           <p className="text-sm font-semibold">{formatPrice(order.total)}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            {units} unit{units === 1 ? "" : "s"}
+                            {formatDate(order.createdAt)}
                           </p>
                         </div>
                       </div>
-                      <p className="mt-1.5 truncate text-xs text-muted-foreground">
-                        {order.items
-                          .map((line) => `${line.quantity}× ${line.name}`)
-                          .join(", ") || "No items recorded"}
-                      </p>
-                      <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
-                        <Select
-                          items={Object.fromEntries(
-                            ORDER_STATUSES.map((status) => [status, status])
-                          )}
-                          value={order.status}
-                          onValueChange={(value) => {
-                            if (value) void updateStatus(order, value as OrderStatus);
-                          }}
-                          disabled={!canManage}
-                        >
-                          <SelectTrigger
-                            size="sm"
-                            className="w-32 capitalize"
-                            aria-label={`Status for order ${order.id}`}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent align="end">
-                            {ORDER_STATUSES.map((status) => (
-                              <SelectItem key={status} value={status} className="capitalize">
-                                {status}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+
+                      <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-2.5 py-2">
+                        <p className="min-w-0 truncate text-[10px] text-muted-foreground">
+                          {order.items
+                            .map((line) => `${line.quantity}× ${line.name}`)
+                            .join(", ") || "No items recorded"}
+                        </p>
+                        <span className="shrink-0 rounded-full bg-background px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                          {units} unit{units === 1 ? "" : "s"}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 flex justify-end">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => setSelectedOrder(order)}
                           aria-label={`View order ${order.id}`}
+                          className="rounded-full"
                         >
-                          <Eye data-icon="inline-start" aria-hidden />
-                          Details
+                          View details
+                          <ChevronRight data-icon="inline-end" aria-hidden />
                         </Button>
                       </div>
                     </li>
                   );
                 })}
                 {!filteredOrders.length && (
-                  <li className="rounded-2xl border px-4 py-10 text-center text-sm text-muted-foreground">
-                    No orders match those filters.
+                  <li>
+                    <EmptyState
+                      icon={Search}
+                      title="No orders found"
+                      description="Try a different search or status filter."
+                    />
                   </li>
                 )}
               </ul>
 
               {/* Desktop order table */}
-              <div className="hidden md:block">
+              <div className="hidden overflow-hidden rounded-2xl border md:block">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Date</TableHead>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="pl-4">Order</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead className="w-36">Status</TableHead>
-                      <TableHead className="w-12 text-right">
+                      <TableHead className="w-12 pr-4 text-right">
                         <span className="sr-only">View</span>
                       </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredOrders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>
-                          <button
-                            type="button"
-                            className="font-mono text-xs font-medium underline-offset-4 hover:underline"
-                            onClick={() => setSelectedOrder(order)}
-                          >
-                            {order.id}
-                          </button>
-                        </TableCell>
-                        <TableCell className="text-xs">{formatDate(order.createdAt)}</TableCell>
-                        <TableCell>
-                          <span className="text-xs font-medium">
-                            {order.customer.fullName || "Guest"}
-                          </span>
-                          <span className="block text-[10px] text-muted-foreground">
-                            {order.customer.email || order.customer.city || "No contact details"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs">
-                            {order.items
-                              .slice(0, 2)
-                              .map((line) => `${line.quantity}× ${line.name.slice(0, 18)}…`)
-                              .join(", ") || "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-semibold">
-                          {formatPrice(order.total)}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            items={Object.fromEntries(
-                              ORDER_STATUSES.map((status) => [status, status])
-                            )}
-                            value={order.status}
-                            onValueChange={(value) => {
-                              if (value) void updateStatus(order, value as OrderStatus);
-                            }}
-                            disabled={!canManage}
-                          >
-                            <SelectTrigger
-                              size="sm"
-                              className="w-full capitalize"
-                              aria-label="Order status"
+                    {filteredOrders.map((order) => {
+                      const units = order.items.reduce((sum, line) => sum + line.quantity, 0);
+                      return (
+                        <TableRow key={order.id} className="group">
+                          <TableCell className="pl-4">
+                            <button
+                              type="button"
+                              className="font-mono text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                              onClick={() => setSelectedOrder(order)}
                             >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent align="end">
-                              {ORDER_STATUSES.map((status) => (
-                                <SelectItem key={status} value={status} className="capitalize">
-                                  {status}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setSelectedOrder(order)}
-                            aria-label={`View order ${order.id}`}
-                          >
-                            <Eye aria-hidden />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              {order.id}
+                            </button>
+                            <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                              {formatDate(order.createdAt)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2.5">
+                              <CustomerAvatar
+                                name={order.customer.fullName || "Guest"}
+                                seed={order.customer.email || order.id}
+                                className="size-8"
+                              />
+                              <div className="min-w-0">
+                                <p className="max-w-40 truncate text-xs font-semibold">
+                                  {order.customer.fullName || "Guest"}
+                                </p>
+                                <p className="max-w-40 truncate text-[10px] text-muted-foreground">
+                                  {order.customer.email ||
+                                    order.customer.city ||
+                                    "No contact details"}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <p className="max-w-56 truncate text-xs">
+                              {order.items
+                                .slice(0, 2)
+                                .map((line) => `${line.quantity}× ${line.name}`)
+                                .join(", ") || "—"}
+                            </p>
+                            <span className="mt-0.5 inline-flex rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                              {units} unit{units === 1 ? "" : "s"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-semibold">
+                            {formatPrice(order.total)}
+                          </TableCell>
+                          <TableCell>
+                            <OrderStatusSelect
+                              order={order}
+                              disabled={!canManage}
+                              onStatusChange={(status) => void updateStatus(order, status)}
+                            />
+                          </TableCell>
+                          <TableCell className="pr-4 text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setSelectedOrder(order)}
+                              aria-label={`View order ${order.id}`}
+                            >
+                              <Eye aria-hidden />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {!filteredOrders.length && (
-                      <EmptyRow colSpan={7}>No orders match those filters.</EmptyRow>
+                      <EmptyRow colSpan={6}>
+                        Try a different search or status filter.
+                      </EmptyRow>
                     )}
                   </TableBody>
                 </Table>
@@ -1086,53 +1522,92 @@ export function AdminDashboard({
 
         <TabsContent value="inventory">
           <div className="flex flex-col gap-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
               <MiniStat
                 label="Catalogue"
                 value={String(products.length)}
                 hint={`${products.length - catalogueStats.local} live · ${catalogueStats.local} local demo`}
+                icon={PackageSearch}
+                tone="bg-primary/10 text-primary"
               />
               <MiniStat
                 label="Units in stock"
                 value={String(catalogueStats.units)}
                 hint="Ready to sell across every size"
+                icon={Boxes}
+                tone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
               />
               <MiniStat
                 label="Needs attention"
-                value={String(catalogueStats.low + catalogueStats.out)}
+                value={String(attentionCount)}
                 hint={`${catalogueStats.low} low · ${catalogueStats.out} out of stock`}
+                icon={TriangleAlert}
+                tone="bg-amber-500/10 text-amber-600 dark:text-amber-400"
               />
               <MiniStat
                 label="Inventory value"
                 value={formatPrice(catalogueStats.value)}
                 hint="At current retail prices"
+                icon={CircleDollarSign}
+                tone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               />
             </div>
 
-            <Card>
-              <CardContent className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <div className="relative w-full sm:max-w-xs">
-                    <Search
-                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <Input
+            <Card className="rounded-3xl">
+              <CardContent className="flex flex-col gap-5">
+                <PanelHeading
+                  icon={Boxes}
+                  title="Inventory"
+                  description={`${filteredProducts.length} of ${products.length} products · ${catalogueStats.units} units on hand`}
+                  action={
+                    <Badge
+                      variant="outline"
+                      className="self-start rounded-full bg-background sm:self-auto"
+                    >
+                      {attentionCount ? `${attentionCount} need attention` : "All stocked"}
+                    </Badge>
+                  }
+                />
+
+                <div className="flex flex-col gap-2 rounded-2xl border bg-muted/20 p-2.5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <SearchBox
                       value={inventoryQuery}
-                      onChange={(event) => setInventoryQuery(event.target.value)}
+                      onChange={setInventoryQuery}
                       placeholder="Search product, brand, slug…"
-                      className="pl-9"
-                      aria-label="Search inventory"
+                      ariaLabel="Search inventory"
                     />
+                    <div className="flex gap-2 sm:ml-auto">
+                      <Button
+                        variant="outline"
+                        onClick={() => downloadInventoryCsv(filteredProducts)}
+                        disabled={!filteredProducts.length}
+                        className="h-9 flex-1 rounded-full bg-background sm:flex-none"
+                      >
+                        <Download data-icon="inline-start" aria-hidden />
+                        Export
+                      </Button>
+                      <Button
+                        onClick={openCreate}
+                        disabled={!canManage}
+                        className="h-9 flex-1 rounded-full sm:flex-none"
+                      >
+                        <Plus data-icon="inline-start" aria-hidden />
+                        Add product
+                      </Button>
+                    </div>
                   </div>
-                  {/* Filter + action row — 2-col on mobile, single row from sm */}
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+
+                  <div className="flex flex-wrap gap-2">
                     <Select
                       items={CATEGORY_ITEMS}
                       value={inventoryCategory}
                       onValueChange={(value) => setInventoryCategory(value as CategoryFilter)}
                     >
-                      <SelectTrigger className="w-full sm:w-36" aria-label="Filter by category">
+                      <SelectTrigger
+                        className="h-9 w-full rounded-full bg-background data-[size=default]:h-9 sm:w-36"
+                        aria-label="Filter by category"
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1148,7 +1623,10 @@ export function AdminDashboard({
                       value={inventoryHealth}
                       onValueChange={(value) => setInventoryHealth(value as HealthFilter)}
                     >
-                      <SelectTrigger className="w-full sm:w-32" aria-label="Filter by stock health">
+                      <SelectTrigger
+                        className="h-9 w-full rounded-full bg-background data-[size=default]:h-9 sm:w-32"
+                        aria-label="Filter by stock health"
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1165,7 +1643,7 @@ export function AdminDashboard({
                       onValueChange={(value) => setInventorySort(value as InventorySort)}
                     >
                       <SelectTrigger
-                        className="w-full sm:w-40"
+                        className="h-9 w-full rounded-full bg-background data-[size=default]:h-9 sm:w-40"
                         aria-label="Sort inventory"
                       >
                         <SelectValue />
@@ -1178,32 +1656,14 @@ export function AdminDashboard({
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="flex gap-2 sm:ml-auto">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadInventoryCsv(filteredProducts)}
-                        disabled={!filteredProducts.length}
-                        className="flex-1 sm:flex-none"
-                      >
-                        <Download data-icon="inline-start" aria-hidden />
-                        Export
-                      </Button>
-                      <Button
-                        onClick={openCreate}
-                        disabled={!canManage}
-                        size="sm"
-                        className="flex-1 sm:flex-none"
-                      >
-                        <Plus data-icon="inline-start" aria-hidden />
-                        Add
-                      </Button>
-                    </div>
+                    <span className="ml-auto hidden text-[10px] font-medium text-muted-foreground sm:flex sm:items-center">
+                      {filteredProducts.length} shown
+                    </span>
                   </div>
                 </div>
 
-                {/* Mobile + tablet inventory cards (< lg) */}
-                <ul className="grid gap-2 sm:grid-cols-2 lg:hidden">
+                {/* Mobile inventory cards (< md) */}
+                <ul className="flex flex-col gap-2.5 md:hidden">
                   {filteredProducts.map((entry) => {
                     const product = entry.product;
                     const stock = totalStock(product);
@@ -1214,114 +1674,143 @@ export function AdminDashboard({
                     return (
                       <li
                         key={`${entry.sourceId ?? "local"}-${product.id}`}
-                        className="flex flex-col rounded-2xl border p-3"
+                        className="flex flex-col rounded-2xl border bg-background p-3 transition-shadow hover:shadow-sm"
                       >
-                        {/* Top: image + info */}
-                        <div className="flex items-start gap-3">
+                        {/* Top row: image + info */}
+                        <div className="flex gap-3">
                           <ProductThumb
                             src={product.images[0]}
                             alt={product.name}
-                            className="size-12 shrink-0 rounded-xl sm:size-14"
+                            className="size-12 shrink-0 rounded-xl"
                           />
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-1.5">
-                              <p className="line-clamp-2 text-sm font-medium leading-snug">
-                                {product.name}
-                              </p>
-                              <HealthBadge health={health} />
-                            </div>
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {/* Name on its own line so it can wrap freely */}
+                            <p className="line-clamp-2 text-sm font-semibold leading-snug">
+                              {product.name}
+                            </p>
+                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                               {product.brand} · {CATEGORY_LABELS[product.category]}
                             </p>
-                            <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/70">
-                              {product.slug}
-                            </p>
                           </div>
+                          {/* Badge floats right of the whole top block */}
+                          <HealthBadge health={health} />
                         </div>
 
-                        {/* Middle: price + stock */}
-                        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                          <span className="font-semibold">{formatPrice(product.price)}</span>
-                          {discount && (
-                            <span className="text-[10px] text-red-600">−{discount}%</span>
-                          )}
-                          <span className="text-muted-foreground">
-                            {stock === 0 ? "Out of stock" : `${stock} in stock`}
+                        {/* Price + stock row */}
+                        <div className="mt-2.5 flex items-center justify-between gap-2 text-xs">
+                          <span className="font-semibold">
+                            {formatPrice(product.price)}
+                            {discount && (
+                              <span className="ml-1 text-[10px] font-semibold text-red-600 dark:text-red-400">
+                                −{discount}%
+                              </span>
+                            )}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
-                            {soldOutSizes > 0 ? `${soldOutSizes} size${soldOutSizes === 1 ? "" : "s"} out` : "All sizes stocked"}
+                            {stock === 0 ? "Out of stock" : `${stock} in stock`}
                           </span>
                         </div>
+                        <StockBar stock={stock} className="mt-1.5" />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {soldOutSizes > 0
+                            ? `${soldOutSizes} size${soldOutSizes === 1 ? "" : "s"} out`
+                            : "All sizes stocked"}
+                        </p>
 
                         {/* Tags */}
                         {(product.tags.length > 0 || !entry.sourceId) && (
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                          <div className="mt-2 flex flex-wrap items-center gap-1">
                             {!entry.sourceId && (
-                              <Badge variant="outline" className="rounded-full px-1.5 py-0 text-[9px]">
+                              <Badge
+                                variant="outline"
+                                className="rounded-full px-1.5 py-0 text-[9px]"
+                              >
                                 local demo
                               </Badge>
                             )}
                             {product.tags.map((tag) => (
-                              <Badge key={tag} variant="secondary" className="rounded-full px-1.5 py-0 text-[9px] capitalize">
+                              <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="rounded-full px-1.5 py-0 text-[9px] capitalize"
+                              >
                                 {tag}
                               </Badge>
                             ))}
                           </div>
                         )}
 
-                        {/* Actions — pushed to bottom */}
-                        <div className="mt-auto flex items-center justify-end gap-0.5 border-t pt-2.5 mt-2.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEdit(entry)}
-                            disabled={!canManage}
-                            aria-label={`Edit ${product.name}`}
-                            className="h-8 px-2 text-xs"
-                          >
-                            <Pencil className="size-3.5" aria-hidden />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => openDuplicate(entry)}
-                            disabled={!canManage}
-                            aria-label={`Duplicate ${product.name}`}
-                          >
-                            <Copy aria-hidden />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setDeleteTarget(entry)}
-                            disabled={!canManage}
-                            aria-label={`Delete ${product.name}`}
-                          >
-                            <Trash2 aria-hidden />
-                          </Button>
+                        {/* Footer: slug + actions */}
+                        <div className="mt-3 flex items-center gap-2 border-t pt-2.5">
+                          <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground/60">
+                            {product.slug}
+                          </span>
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEdit(entry)}
+                              disabled={!canManage}
+                              aria-label={`Edit ${product.name}`}
+                              className="h-8 rounded-full px-2.5 text-xs"
+                            >
+                              <Pencil className="size-3.5" aria-hidden />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => openDuplicate(entry)}
+                              disabled={!canManage}
+                              aria-label={`Duplicate ${product.name}`}
+                            >
+                              <Copy aria-hidden />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setDeleteTarget(entry)}
+                              disabled={!canManage}
+                              aria-label={`Delete ${product.name}`}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 aria-hidden />
+                            </Button>
+                          </div>
                         </div>
                       </li>
                     );
                   })}
                   {!filteredProducts.length && (
-                    <li className="col-span-2 rounded-2xl border px-4 py-10 text-center text-sm text-muted-foreground">
-                      No products match those filters.
+                    <li>
+                      <EmptyState
+                        icon={PackageSearch}
+                        title="No products found"
+                        description="Try a different search or filter, or add a new product."
+                        action={
+                          canManage ? (
+                            <Button size="sm" onClick={openCreate} className="rounded-full">
+                              <Plus data-icon="inline-start" aria-hidden />
+                              Add product
+                            </Button>
+                          ) : undefined
+                        }
+                      />
                     </li>
                   )}
                 </ul>
 
-                {/* Desktop inventory table */}
-                <div className="hidden lg:block">
+                {/* Desktop inventory table (md+) */}
+                <div className="hidden overflow-hidden rounded-2xl border md:block">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Brand</TableHead>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="pl-4">Product</TableHead>
+                        <TableHead className="hidden lg:table-cell">Brand</TableHead>
                         <TableHead>Price</TableHead>
-                        <TableHead className="text-right">Stock</TableHead>
-                        <TableHead className="w-24 text-right">Health</TableHead>
-                        <TableHead className="w-28 text-right">
+                        <TableHead className="w-32">Stock</TableHead>
+                        <TableHead className="w-20">Health</TableHead>
+                        <TableHead className="w-24 pr-4 text-right">
                           <span className="sr-only">Actions</span>
                         </TableHead>
                       </TableRow>
@@ -1338,21 +1827,24 @@ export function AdminDashboard({
 
                         return (
                           <TableRow key={`${entry.sourceId ?? "local"}-${product.id}`}>
-                            <TableCell>
+                            <TableCell className="pl-4">
                               <div className="flex items-center gap-3">
                                 <ProductThumb src={product.images[0]} alt={product.name} />
                                 <div className="min-w-0">
-                                  <p className="max-w-64 truncate text-xs font-medium">
+                                  <p className="max-w-48 truncate text-xs font-semibold lg:max-w-64">
                                     {product.name}
                                   </p>
-                                  <p className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                                    <span className="font-mono">{product.slug}</span>
+                                  <p className="mt-0.5 text-[10px] text-muted-foreground lg:hidden">
+                                    {product.brand}
+                                  </p>
+                                  <p className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                                    <span className="hidden font-mono sm:inline">{product.slug}</span>
                                     {!entry.sourceId && (
                                       <Badge
                                         variant="outline"
                                         className="rounded-full px-1.5 py-0 text-[9px]"
                                       >
-                                        local demo
+                                        demo
                                       </Badge>
                                     )}
                                     {product.tags.map((tag) => (
@@ -1368,23 +1860,28 @@ export function AdminDashboard({
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="text-xs">{product.brand}</TableCell>
+                            <TableCell className="hidden text-xs lg:table-cell">{product.brand}</TableCell>
                             <TableCell className="text-xs">
                               {formatPrice(product.price)}
                               {discount && (
-                                <span className="ml-1 text-[10px] text-red-600">−{discount}%</span>
+                                <span className="ml-1 text-[10px] text-red-600 dark:text-red-400">
+                                  −{discount}%
+                                </span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right text-xs font-semibold">
-                              {stock}
-                              <span className="block text-[10px] font-normal text-muted-foreground">
-                                {soldOutSizes} sold out
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <HealthBadge health={health} />
+                            <TableCell>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="text-xs font-semibold">{stock}</span>
+                                <StockBar stock={stock} className="w-20" />
+                                <span className="text-[10px] text-muted-foreground">
+                                  {soldOutSizes} sold out
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell>
+                              <HealthBadge health={health} />
+                            </TableCell>
+                            <TableCell className="pr-4">
                               <div className="flex items-center justify-end gap-0.5">
                                 <Button
                                   variant="ghost"
@@ -1413,6 +1910,7 @@ export function AdminDashboard({
                                   disabled={!canManage}
                                   aria-label={`Delete ${product.name}`}
                                   title="Delete"
+                                  className="text-muted-foreground hover:text-destructive"
                                 >
                                   <Trash2 aria-hidden />
                                 </Button>
@@ -1422,7 +1920,9 @@ export function AdminDashboard({
                         );
                       })}
                       {!filteredProducts.length && (
-                        <EmptyRow colSpan={6}>No products match those filters.</EmptyRow>
+                        <EmptyRow colSpan={6}>
+                          Try a different search or filter.
+                        </EmptyRow>
                       )}
                     </TableBody>
                   </Table>
@@ -1434,84 +1934,131 @@ export function AdminDashboard({
 
         <TabsContent value="customers">
           <div className="flex flex-col gap-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
               <MiniStat
                 label="Customers"
                 value={String(customers.length)}
                 hint="Unique customers in this order set"
+                icon={Users}
+                tone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
               />
               <MiniStat
                 label="Repeat customers"
                 value={String(repeatCustomers)}
                 hint="More than one order"
+                icon={UserCheck}
+                tone="bg-violet-500/10 text-violet-600 dark:text-violet-400"
               />
               <MiniStat
                 label="Average spend"
-                value={formatPrice(customers.length ? Math.round(customerSpend / customers.length) : 0)}
+                value={formatPrice(
+                  customers.length ? Math.round(customerSpend / customers.length) : 0
+                )}
                 hint="Excludes cancelled orders"
+                icon={CircleDollarSign}
+                tone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                className="col-span-2 sm:col-span-1"
               />
             </div>
 
-            <Card>
-              <CardContent className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative w-full sm:min-w-52 sm:max-w-sm sm:flex-1">
-                    <Search
-                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <Input
-                      value={customerQuery}
-                      onChange={(event) => setCustomerQuery(event.target.value)}
-                      placeholder="Search name, email or city…"
-                      className="pl-9"
-                      aria-label="Search customers"
-                    />
-                  </div>
-                  <Badge variant="outline" className="rounded-full">
-                    {filteredCustomers.length} of {customers.length}
-                  </Badge>
+            <Card className="rounded-3xl">
+              <CardContent className="flex flex-col gap-5">
+                <PanelHeading
+                  icon={Users}
+                  title="Customers"
+                  description={`${filteredCustomers.length} of ${customers.length} customers · ${repeatCustomers} repeat`}
+                  action={
+                    <Badge
+                      variant="outline"
+                      className="self-start rounded-full bg-background sm:self-auto"
+                    >
+                      {formatPrice(customerSpend)} lifetime
+                    </Badge>
+                  }
+                />
+
+                <div className="flex flex-col gap-2 rounded-2xl border bg-muted/20 p-2.5 sm:flex-row sm:items-center">
+                  <SearchBox
+                    value={customerQuery}
+                    onChange={setCustomerQuery}
+                    placeholder="Search name, email or city…"
+                    ariaLabel="Search customers"
+                  />
+                  <span className="self-start rounded-full bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground sm:ml-auto sm:self-auto">
+                    {filteredCustomers.length} shown
+                  </span>
                 </div>
 
                 {/* Mobile customer cards */}
-                <ul className="flex flex-col gap-2 md:hidden">
+                <ul className="flex flex-col gap-2.5 md:hidden">
                   {filteredCustomers.map((customer) => (
-                    <li key={customer.key} className="rounded-2xl border p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <Link
-                            href={customerHref(customer.key)}
-                            className="group inline-flex max-w-full items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
-                          >
-                            <span className="truncate">{customer.name}</span>
-                            <ChevronRight
-                              className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-                              aria-hidden
-                            />
-                          </Link>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {customer.email || "No email"}
+                    <li
+                      key={customer.key}
+                      className="rounded-2xl border bg-background p-3.5 transition-shadow hover:shadow-sm"
+                    >
+                      <div className="flex items-start gap-3">
+                        <CustomerAvatar
+                          name={customer.name}
+                          seed={customer.key}
+                          className="size-10"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <Link
+                                href={customerHref(customer.key)}
+                                className="group inline-flex max-w-full items-center gap-1 text-sm font-semibold underline-offset-4 hover:underline"
+                              >
+                                <span className="truncate">{customer.name}</span>
+                                <ChevronRight
+                                  className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                                  aria-hidden
+                                />
+                              </Link>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {customer.email || "No email"}
+                              </p>
+                            </div>
+                            <p className="shrink-0 text-sm font-semibold">
+                              {formatPrice(customer.spent)}
+                            </p>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            {customer.orders > 1 && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
+                                <UserCheck className="size-2.5" aria-hidden />
+                                Repeat
+                              </span>
+                            )}
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                              {customer.city || "No city"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-2 text-center text-xs">
+                        <div>
+                          <p className="text-[9px] tracking-wide text-muted-foreground uppercase">
+                            Orders
                           </p>
-                        </div>
-                        <p className="shrink-0 text-sm font-semibold">
-                          {formatPrice(customer.spent)}
-                        </p>
-                      </div>
-                      <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Orders</p>
-                          <p className="font-semibold">{customer.orders}</p>
+                          <p className="mt-0.5 font-semibold">{customer.orders}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Units</p>
-                          <p className="font-semibold">{customer.units}</p>
+                          <p className="text-[9px] tracking-wide text-muted-foreground uppercase">
+                            Units
+                          </p>
+                          <p className="mt-0.5 font-semibold">{customer.units}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-muted-foreground">City</p>
-                          <p className="truncate font-medium">{customer.city || "—"}</p>
+                          <p className="text-[9px] tracking-wide text-muted-foreground uppercase">
+                            City
+                          </p>
+                          <p className="mt-0.5 truncate font-semibold">{customer.city || "—"}</p>
                         </div>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+
+                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t pt-2.5">
                         <p className="text-[10px] text-muted-foreground">
                           Last order {customer.lastOrder ? formatDate(customer.lastOrder) : "—"}
                         </p>
@@ -1519,43 +2066,51 @@ export function AdminDashboard({
                           <Button
                             variant="ghost"
                             size="sm"
-                            render={<Link href={customerHref(customer.key)} />}
+                            onClick={() => viewCustomerOrders(customer)}
+                            className="rounded-full"
                           >
-                            Profile
-                            <ChevronRight data-icon="inline-end" aria-hidden />
+                            View orders
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => viewCustomerOrders(customer)}
+                            render={<Link href={customerHref(customer.key)} />}
+                            className="rounded-full"
                           >
-                            View orders
+                            Profile
+                            <ChevronRight data-icon="inline-end" aria-hidden />
                           </Button>
                         </div>
                       </div>
                     </li>
                   ))}
                   {!filteredCustomers.length && (
-                    <li className="rounded-2xl border px-4 py-10 text-center text-sm text-muted-foreground">
-                      {customers.length
-                        ? "No customers match that search."
-                        : "Customers will appear here after the first order."}
+                    <li>
+                      <EmptyState
+                        icon={Users}
+                        title={customers.length ? "No customers found" : "No customers yet"}
+                        description={
+                          customers.length
+                            ? "Try a different search."
+                            : "Customers will appear here after the first order."
+                        }
+                      />
                     </li>
                   )}
                 </ul>
 
                 {/* Desktop customer table */}
-                <div className="hidden md:block">
+                <div className="hidden overflow-hidden rounded-2xl border md:block">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Customer</TableHead>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="pl-4">Customer</TableHead>
                         <TableHead>City</TableHead>
                         <TableHead className="text-right">Orders</TableHead>
                         <TableHead className="text-right">Units</TableHead>
                         <TableHead className="text-right">Spent</TableHead>
                         <TableHead>Last order</TableHead>
-                        <TableHead className="w-36 text-right">
+                        <TableHead className="w-36 pr-4 text-right">
                           <span className="sr-only">Actions</span>
                         </TableHead>
                       </TableRow>
@@ -1563,20 +2118,29 @@ export function AdminDashboard({
                     <TableBody>
                       {filteredCustomers.map((customer) => (
                         <TableRow key={customer.key}>
-                          <TableCell>
-                            <Link
-                              href={customerHref(customer.key)}
-                              className="group inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
-                            >
-                              {customer.name}
-                              <ChevronRight
-                                className="size-3 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-                                aria-hidden
+                          <TableCell className="pl-4">
+                            <div className="flex items-center gap-2.5">
+                              <CustomerAvatar
+                                name={customer.name}
+                                seed={customer.key}
+                                className="size-8"
                               />
-                            </Link>
-                            <span className="block text-[10px] text-muted-foreground">
-                              {customer.email || "No email"}
-                            </span>
+                              <div className="min-w-0">
+                                <Link
+                                  href={customerHref(customer.key)}
+                                  className="group inline-flex items-center gap-1 text-xs font-semibold underline-offset-4 hover:underline"
+                                >
+                                  {customer.name}
+                                  <ChevronRight
+                                    className="size-3 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                                    aria-hidden
+                                  />
+                                </Link>
+                                <span className="block max-w-48 truncate text-[10px] text-muted-foreground">
+                                  {customer.email || "No email"}
+                                </span>
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {customer.city || "—"}
@@ -1591,12 +2155,13 @@ export function AdminDashboard({
                           <TableCell className="text-xs">
                             {customer.lastOrder ? formatDate(customer.lastOrder) : "—"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="pr-4 text-right">
                             <div className="flex items-center justify-end gap-0.5">
                               <Button
                                 variant="ghost"
                                 size="xs"
                                 onClick={() => viewCustomerOrders(customer)}
+                                className="rounded-full"
                               >
                                 View orders
                               </Button>
@@ -1616,7 +2181,7 @@ export function AdminDashboard({
                       {!filteredCustomers.length && (
                         <EmptyRow colSpan={7}>
                           {customers.length
-                            ? "No customers match that search."
+                            ? "Try a different search."
                             : "Customers will appear here after the first order."}
                         </EmptyRow>
                       )}

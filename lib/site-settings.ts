@@ -1,8 +1,8 @@
 /**
- * Shared storefront settings: company name, announcement banner and the
- * home-page hero. The same shape is used by the admin editor, the Supabase
- * row mapping and every storefront consumer, so a saved value renders
- * consistently everywhere.
+ * Shared storefront settings: company name, announcement banner, welcome
+ * popup, holiday mode and the home-page hero. The same shape is used by the
+ * admin editor, the Supabase row mapping and every storefront consumer, so a
+ * saved value renders consistently everywhere.
  */
 
 export type SiteHeroSettings = {
@@ -29,6 +29,22 @@ export type SiteBannerSettings = {
   href: string;
 };
 
+export type SiteWelcomePopupSettings = {
+  enabled: boolean;
+  title: string;
+  description: string;
+  /** Discount code shown in the popup. Empty hides the code block. */
+  code: string;
+  ctaLabel: string;
+  ctaHref: string;
+};
+
+export type SiteVacationSettings = {
+  enabled: boolean;
+  /** Warning shown above checkout while the store is closed. */
+  message: string;
+};
+
 export type SiteSettings = {
   companyName: string;
   /** ISO 4217 currency code, e.g. "USD", "ETB", "EUR". */
@@ -37,6 +53,8 @@ export type SiteSettings = {
   freeShippingThreshold: number;
   hero: SiteHeroSettings;
   banner: SiteBannerSettings;
+  welcomePopup: SiteWelcomePopupSettings;
+  vacation: SiteVacationSettings;
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -62,6 +80,18 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     message: "Free shipping over $250 · 30-day easy returns · 100% authentic pairs",
     href: "/products",
   },
+  welcomePopup: {
+    enabled: false,
+    title: "Get 10% off your first purchase!",
+    description: "Join the list and use this code at checkout on your first order.",
+    code: "WELCOME10",
+    ctaLabel: "Shop now",
+    ctaHref: "/products",
+  },
+  vacation: {
+    enabled: false,
+    message: "We are accepting orders, but delivery will start on Monday.",
+  },
 };
 
 export const SITE_SETTINGS_STORAGE_KEY = "sole-stone-site-settings-v1";
@@ -74,6 +104,8 @@ export type SiteSettingsRow = {
   free_shipping_threshold?: number | null;
   hero?: unknown;
   banner?: unknown;
+  welcome_popup?: unknown;
+  vacation_mode?: unknown;
   updated_at?: string | null;
 };
 
@@ -102,6 +134,8 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
   const source = isRecord(value) ? value : {};
   const hero = isRecord(source.hero) ? source.hero : {};
   const banner = isRecord(source.banner) ? source.banner : {};
+  const welcomePopup = isRecord(source.welcomePopup) ? source.welcomePopup : {};
+  const vacation = isRecord(source.vacation) ? source.vacation : {};
   const defaults = DEFAULT_SITE_SETTINGS;
 
   const rawThreshold = Number(source.freeShippingThreshold);
@@ -137,6 +171,28 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
       message: textOr(banner.message, defaults.banner.message, 200),
       href: text(banner.href, defaults.banner.href, 500),
     },
+    welcomePopup: {
+      enabled:
+        typeof welcomePopup.enabled === "boolean"
+          ? welcomePopup.enabled
+          : defaults.welcomePopup.enabled,
+      title: textOr(welcomePopup.title, defaults.welcomePopup.title, 120),
+      description: text(
+        welcomePopup.description,
+        defaults.welcomePopup.description,
+        300
+      ),
+      code: text(welcomePopup.code, defaults.welcomePopup.code, 40),
+      ctaLabel: textOr(welcomePopup.ctaLabel, defaults.welcomePopup.ctaLabel, 40),
+      ctaHref: textOr(welcomePopup.ctaHref, defaults.welcomePopup.ctaHref, 500),
+    },
+    vacation: {
+      enabled:
+        typeof vacation.enabled === "boolean"
+          ? vacation.enabled
+          : defaults.vacation.enabled,
+      message: textOr(vacation.message, defaults.vacation.message, 300),
+    },
   };
 }
 
@@ -149,6 +205,8 @@ export function rowToSettings(row: SiteSettingsRow | null | undefined): SiteSett
     freeShippingThreshold: row.free_shipping_threshold,
     hero: row.hero,
     banner: row.banner,
+    welcomePopup: row.welcome_popup,
+    vacation: row.vacation_mode,
   });
 }
 
@@ -159,6 +217,8 @@ export function settingsToRow(settings: SiteSettings) {
     free_shipping_threshold: settings.freeShippingThreshold,
     hero: settings.hero,
     banner: settings.banner,
+    welcome_popup: settings.welcomePopup,
+    vacation_mode: settings.vacation,
   };
 }
 

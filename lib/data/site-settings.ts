@@ -21,7 +21,10 @@ export const loadSiteSettings = cache(async (): Promise<SiteSettings> => {
   try {
     const { data, error } = await supabase
       .from("site_settings")
-      .select("id, company_name, currency, free_shipping_threshold, hero, banner")
+      // `*` keeps older deployments working before the welcome_popup /
+      // vacation_mode columns have been added; missing fields fall back to
+      // the defaults in lib/site-settings.ts.
+      .select("*")
       .limit(1)
       .maybeSingle();
 

@@ -85,6 +85,8 @@ create table if not exists public.site_settings (
   free_shipping_threshold numeric(10,2) not null default 250,
   hero                    jsonb not null default '{}'::jsonb,
   banner                  jsonb not null default '{}'::jsonb,
+  welcome_popup           jsonb not null default '{}'::jsonb,
+  vacation_mode           jsonb not null default '{}'::jsonb,
   updated_at              timestamptz not null default now()
 );
 
@@ -93,6 +95,10 @@ alter table public.site_settings
   add column if not exists free_shipping_threshold numeric(10,2) not null default 250;
 alter table public.site_settings
   add column if not exists currency text not null default 'USD';
+alter table public.site_settings
+  add column if not exists welcome_popup jsonb not null default '{}'::jsonb;
+alter table public.site_settings
+  add column if not exists vacation_mode jsonb not null default '{}'::jsonb;
 
 alter table public.site_settings enable row level security;
 do $$ begin

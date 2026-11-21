@@ -21,6 +21,7 @@ you drop in your Supabase project keys.
 - 3-step checkout (contact → shipping → payment) with per-step validation, order summary, and success page
 - Checkout requires sign-in when Supabase is connected, then returns the shopper to the saved bag; demo mode keeps guest checkout working
 - Recently viewed rail, 404 page, toasts, reveal animations, admin-controlled announcement banner
+- Admin-controlled welcome discount popup (shown once per browser) and holiday/vacation delivery warning on checkout
 
 **Auth (Supabase)**
 - Email/password sign-up + sign-in, password visibility toggle
@@ -37,7 +38,7 @@ you drop in your Supabase project keys.
 - Order search, status filter, sorting, detail dialog, clickable fulfilment pipeline, customer spend summary and CSV export
 - Customer profiles at `/admin/customers/[key]` — lifetime KPIs, six-month spend trend, contact/shipping details, top products, category mix, and searchable order history with CSV export and inline status updates
 - Insights tab with top products by revenue, category mix, repeat rate and period metrics
-- Storefront tab: edit the company name, announcement banner (enabled, message, link) and home-page hero (badge, headline, highlighted word, description, CTA labels/links, image, featured product) with live previews
+- Storefront tab: edit the company name, announcement banner (enabled, message, link), welcome discount popup (enabled, headline, description, code, CTA), holiday/vacation checkout warning and home-page hero (badge, headline, highlighted word, description, CTA labels/links, image, featured product) with live previews
 - Admin writes are gated by `profiles.is_admin`; demo-mode edits stay in the session, live mode persists through Supabase RLS
 
 **Supabase**
@@ -77,7 +78,7 @@ Open http://localhost:3000. Everything works out of the box in demo mode.
 
 > Updating an existing project? Re-run `supabase/schema.sql` — it is idempotent and adds the
 > `phone`, `address`, `city`, `postal_code` and `country` columns used by saved delivery details,
-> plus the `site_settings` table used by the admin Storefront tab.
+> plus the `site_settings` table (including the `welcome_popup` and `vacation_mode` columns) used by the admin Storefront tab.
 
 Auth, order persistence, admin product/order management, storefront settings and review saving go live automatically.
 To make your account an admin: `update profiles set is_admin = true where email = 'you@example.com';`

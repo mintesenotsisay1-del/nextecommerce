@@ -9,6 +9,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Banknote,
+  CalendarClock,
   CheckCircle2,
   ChevronDown,
   CreditCard,
@@ -21,6 +22,7 @@ import {
   User,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +32,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { useCart } from "@/components/providers/cart-provider";
+import { useSiteSettings } from "@/components/providers/site-settings-provider";
 import {
   readLocalSavedAddress,
   savedAddressFromProfile,
@@ -259,6 +262,8 @@ const INPUT_CLS = "h-11 sm:h-10";
 export default function CheckoutPage() {
   const router = useRouter();
   const { lines, subtotal, clear, freeShippingThreshold: threshold } = useCart();
+  const { settings } = useSiteSettings();
+  const vacation = settings.vacation;
   const freeShipping = subtotal >= threshold;
   const shipping = freeShipping || subtotal === 0 ? 0 : 9.9;
   const total = subtotal + shipping;
@@ -829,6 +834,16 @@ export default function CheckoutPage() {
           <Lock className="size-3" aria-hidden /> SSL encrypted
         </Badge>
       </header>
+
+      {vacation.enabled && (
+        <Alert className="mb-4 border-amber-500/30 bg-amber-500/10 text-amber-900 sm:mb-6 [&>svg]:text-amber-600">
+          <CalendarClock aria-hidden />
+          <AlertTitle>Holiday delivery update</AlertTitle>
+          <AlertDescription className="text-amber-800/90">
+            {vacation.message}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:gap-8">
         {/* ── Steps column ── */}

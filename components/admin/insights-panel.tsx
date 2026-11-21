@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ImageIcon, PackagePlus, TrendingUp, Users } from "lucide-react";
+import { Boxes, CircleDollarSign, ImageIcon, PackagePlus, TrendingUp, UserCheck, Users, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,15 +45,66 @@ type InsightsPanelProps = {
   onFilterStatus: (status: OrderStatus) => void;
 };
 
-function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
+function Stat({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  icon: LucideIcon;
+  tone: string;
+}) {
   return (
-    <Card size="sm">
-      <CardContent>
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="font-heading mt-1 text-xl font-semibold sm:text-2xl">{value}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+    <Card size="sm" className="rounded-2xl transition-shadow hover:shadow-sm">
+      <CardContent className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            {label}
+          </p>
+          <p className="font-heading mt-1.5 text-xl font-semibold sm:text-2xl">{value}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+        </div>
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-xl sm:size-9",
+            tone
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+        </span>
       </CardContent>
     </Card>
+  );
+}
+
+function SectionHeading({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-heading text-base font-semibold">{title}</h2>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {action}
+    </div>
   );
 }
 
@@ -217,16 +268,22 @@ export function InsightsPanel({
           label="Net revenue"
           value={formatPrice(revenue)}
           hint={`${rangeLabel} · cancelled orders excluded`}
+          icon={CircleDollarSign}
+          tone="bg-emerald-500/10 text-emerald-700"
         />
         <Stat
           label="Units sold"
           value={String(units)}
           hint={`${validOrders.length} fulfilled or active order${validOrders.length === 1 ? "" : "s"}`}
+          icon={Boxes}
+          tone="bg-blue-500/10 text-blue-700"
         />
         <Stat
           label="Repeat rate"
           value={`${repeatRate}%`}
           hint="Customers with more than one order"
+          icon={UserCheck}
+          tone="bg-violet-500/10 text-violet-700"
         />
       </div>
 

@@ -10,6 +10,7 @@ import { CartDrawer } from "@/components/storefront/cart-drawer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { MobileTabBar } from "@/components/storefront/mobile-tab-bar";
+import { WelcomePopup } from "@/components/storefront/welcome-popup";
 import { loadSiteSettings } from "@/lib/data/site-settings";
 import { getAllProducts } from "@/lib/data/products";
 import "./globals.css";
@@ -69,6 +70,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <SiteFooter />
                 <CartDrawer />
                 <MobileTabBar />
+                <WelcomePopup />
                 <Toaster position="bottom-center" richColors expand />
               </RecentlyViewedProvider>
             </WishlistProvider>

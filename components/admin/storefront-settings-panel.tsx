@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import {
+  CalendarClock,
+  Gift,
   ImageIcon,
   Loader2,
   LockKeyhole,
@@ -38,6 +40,8 @@ import {
   type SiteBannerSettings,
   type SiteHeroSettings,
   type SiteSettings,
+  type SiteVacationSettings,
+  type SiteWelcomePopupSettings,
 } from "@/lib/site-settings";
 import type { AdminProduct } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -83,6 +87,12 @@ const CURRENCIES = [
 function friendlyError(message: string) {
   if (message.includes("row-level security") || message.includes("permission")) {
     return "Your account doesn't have storefront permissions. Ask an admin to enable profiles.is_admin.";
+  }
+  if (
+    message.includes("PGRST204") ||
+    /could not find the '[^']+' column/i.test(message)
+  ) {
+    return "The site_settings table is missing the newest columns. Run the updated supabase/schema.sql in the SQL editor.";
   }
   if (
     message.includes("PGRST205") ||
@@ -163,6 +173,70 @@ function BannerPreview({ banner }: { banner: SiteBannerSettings }) {
   );
 }
 
+function WelcomePopupPreview({ popup }: { popup: SiteWelcomePopupSettings }) {
+  if (!popup.enabled) {
+    return (
+      <p className="rounded-xl border border-dashed px-3 py-2 text-[11px] text-muted-foreground">
+        Popup is off — new visitors go straight to the store.
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border bg-muted/30 p-4">
+      <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+        Popup preview
+      </p>
+      <div className="mx-auto mt-3 max-w-xs overflow-hidden rounded-2xl border bg-card text-center shadow-sm">
+        <div className="bg-foreground px-4 pt-5 pb-4 text-background">
+          <span className="mx-auto flex size-9 items-center justify-center rounded-full bg-background/10 ring-1 ring-background/20">
+            <Gift className="size-4" aria-hidden />
+          </span>
+          <p className="font-heading mt-2 text-sm leading-tight font-semibold text-balance">
+            {popup.title}
+          </p>
+          {popup.description && (
+            <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-background/70">
+              {popup.description}
+            </p>
+          )}
+        </div>
+        <div className="grid gap-2 p-3">
+          {popup.code && (
+            <span className="rounded-lg border border-dashed bg-muted/40 px-2 py-1.5 font-mono text-xs font-semibold tracking-wider">
+              {popup.code}
+            </span>
+          )}
+          <span className="rounded-full bg-primary px-3 py-1 text-[10px] text-primary-foreground">
+            {popup.ctaLabel}
+          </span>
+          <span className="text-[10px] text-muted-foreground">No thanks</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VacationPreview({ vacation }: { vacation: SiteVacationSettings }) {
+  if (!vacation.enabled) {
+    return (
+      <p className="rounded-xl border border-dashed px-3 py-2 text-[11px] text-muted-foreground">
+        Holiday mode is off — checkout shows no delivery notice.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900">
+      <CalendarClock className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+      <div>
+        <p className="font-medium">Holiday delivery update</p>
+        <p className="mt-0.5 leading-relaxed text-amber-800/90">{vacation.message}</p>
+      </div>
+    </div>
+  );
+}
+
 function HeroPreview({ hero }: { hero: SiteHeroSettings }) {
   const title = splitHighlight(hero.title, hero.highlight);
 
@@ -203,9 +277,10 @@ function HeroPreview({ hero }: { hero: SiteHeroSettings }) {
 }
 
 /**
- * Admin editor for the company name, announcement banner and home-page hero.
- * Saves the single `site_settings` row to Supabase when configured; otherwise
- * keeps the change in the provider and localStorage for the demo session.
+ * Admin editor for the company name, announcement banner, welcome popup,
+ * holiday mode and home-page hero. Saves the single `site_settings` row to
+ * Supabase when configured; otherwise keeps the change in the provider and
+ * localStorage for the demo session.
  */
 export function StorefrontSettingsPanel({
   products,
@@ -252,6 +327,17 @@ export function StorefrontSettingsPanel({
     setDraft((current) => ({ ...current, banner: { ...current.banner, ...patch } }));
   }
 
+  function updateWelcomePopup(patch: Partial<SiteWelcomePopupSettings>) {
+    setDraft((current) => ({
+      ...current,
+      welcomePopup: { ...current.welcomePopup, ...patch },
+    }));
+  }
+
+  function updateVacation(patch: Partial<SiteVacationSettings>) {
+    setDraft((current) => ({ ...current, vacation: { ...current.vacation, ...patch } }));
+  }
+
   function resetFields() {
     setDraft(DEFAULT_SITE_SETTINGS);
     toast.info("Fields reset", {
@@ -270,6 +356,14 @@ export function StorefrontSettingsPanel({
     const next = normalizeSiteSettings(draft);
     if (next.banner.enabled && !next.banner.message) {
       toast.error("Add a banner message before enabling the banner.");
+      return;
+    }
+    if (next.welcomePopup.enabled && !next.welcomePopup.title) {
+      toast.error("Add a popup headline before enabling the welcome popup.");
+      return;
+    }
+    if (next.vacation.enabled && !next.vacation.message) {
+      toast.error("Add a checkout warning before enabling holiday mode.");
       return;
     }
 
@@ -327,8 +421,8 @@ export function StorefrontSettingsPanel({
           <div>
             <h2 className="font-heading text-lg font-semibold">Storefront</h2>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-              Edit the company name, announcement banner and home-page hero. Save once and the
-              storefront header, footer, banner and hero update together.
+              Edit the company name, announcement banner, welcome popup, holiday mode and
+              home-page hero. Save once and the storefront updates everywhere.
             </p>
           </div>
           <Badge variant="outline" className="rounded-full">
@@ -519,6 +613,151 @@ export function StorefrontSettingsPanel({
           </div>
 
           <BannerPreview banner={draft.banner} />
+        </section>
+
+        {/* ── Welcome discount popup ── */}
+        <section className="flex flex-col gap-4 rounded-2xl border p-4 sm:p-5">
+          <SectionHeading
+            icon={Gift}
+            title="Welcome discount popup"
+            description="Greets new visitors once with a first-purchase offer. Each browser remembers it has been shown."
+            action={
+              <div className="flex items-center gap-2">
+                <Label htmlFor="popup-enabled" className="text-xs">
+                  Show popup
+                </Label>
+                <Switch
+                  id="popup-enabled"
+                  checked={draft.welcomePopup.enabled}
+                  onCheckedChange={(checked) =>
+                    updateWelcomePopup({ enabled: checked === true })
+                  }
+                  disabled={!canManage}
+                />
+              </div>
+            }
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Headline"
+              htmlFor="popup-title"
+              className="sm:col-span-2"
+              hint="The first thing a new visitor sees — keep it short and specific."
+            >
+              <Input
+                id="popup-title"
+                value={draft.welcomePopup.title}
+                onChange={(event) => updateWelcomePopup({ title: event.target.value })}
+                maxLength={120}
+                disabled={!canManage}
+                placeholder="Get 10% off your first purchase!"
+              />
+            </Field>
+
+            <Field
+              label="Description"
+              htmlFor="popup-description"
+              className="sm:col-span-2"
+              hint="Optional supporting line. Leave blank to show the headline only."
+            >
+              <Textarea
+                id="popup-description"
+                value={draft.welcomePopup.description}
+                onChange={(event) =>
+                  updateWelcomePopup({ description: event.target.value })
+                }
+                maxLength={300}
+                rows={2}
+                disabled={!canManage}
+              />
+            </Field>
+
+            <Field
+              label="Discount code"
+              htmlFor="popup-code"
+              hint="Shown with a copy button. Leave blank to hide the code block."
+            >
+              <Input
+                id="popup-code"
+                value={draft.welcomePopup.code}
+                onChange={(event) => updateWelcomePopup({ code: event.target.value })}
+                maxLength={40}
+                disabled={!canManage}
+                placeholder="WELCOME10"
+                className="font-mono uppercase"
+              />
+            </Field>
+
+            <Field label="Button label" htmlFor="popup-cta-label">
+              <Input
+                id="popup-cta-label"
+                value={draft.welcomePopup.ctaLabel}
+                onChange={(event) => updateWelcomePopup({ ctaLabel: event.target.value })}
+                maxLength={40}
+                disabled={!canManage}
+                placeholder="Shop now"
+              />
+            </Field>
+
+            <Field
+              label="Button link"
+              htmlFor="popup-cta-href"
+              className="sm:col-span-2"
+              hint="Where the main button sends the visitor. Internal paths or a full https:// URL."
+            >
+              <Input
+                id="popup-cta-href"
+                value={draft.welcomePopup.ctaHref}
+                onChange={(event) => updateWelcomePopup({ ctaHref: event.target.value })}
+                maxLength={500}
+                disabled={!canManage}
+                placeholder="/products"
+              />
+            </Field>
+          </div>
+
+          <WelcomePopupPreview popup={draft.welcomePopup} />
+        </section>
+
+        {/* ── Holiday / vacation mode ── */}
+        <section className="flex flex-col gap-4 rounded-2xl border p-4 sm:p-5">
+          <SectionHeading
+            icon={CalendarClock}
+            title="Holiday / vacation mode"
+            description="Adds a delivery warning to checkout while the store is closed. Orders can still be placed."
+            action={
+              <div className="flex items-center gap-2">
+                <Label htmlFor="vacation-enabled" className="text-xs">
+                  Holiday mode
+                </Label>
+                <Switch
+                  id="vacation-enabled"
+                  checked={draft.vacation.enabled}
+                  onCheckedChange={(checked) => updateVacation({ enabled: checked === true })}
+                  disabled={!canManage}
+                />
+              </div>
+            }
+          />
+
+          <Field
+            label="Checkout warning"
+            htmlFor="vacation-message"
+            hint="Shown above checkout on every step. Mention the date delivery resumes."
+          >
+            <Textarea
+              id="vacation-message"
+              value={draft.vacation.message}
+              onChange={(event) => updateVacation({ message: event.target.value })}
+              maxLength={300}
+              rows={2}
+              disabled={!canManage}
+              placeholder="We are accepting orders, but delivery will start on Monday."
+            />
+          </Field>
+
+          <VacationPreview vacation={draft.vacation} />
         </section>
 
         {/* ── Hero ── */}
