@@ -83,6 +83,8 @@ create table if not exists public.site_settings (
   id                      text primary key default 'default',
   company_name            text not null default 'Sole & Stone',
   free_shipping_threshold numeric(10,2) not null default 250,
+  appearance              jsonb not null default '{}'::jsonb,
+  home_layout             jsonb not null default '{}'::jsonb,
   hero                    jsonb not null default '{}'::jsonb,
   banner                  jsonb not null default '{}'::jsonb,
   welcome_popup           jsonb not null default '{}'::jsonb,
@@ -95,6 +97,10 @@ alter table public.site_settings
   add column if not exists free_shipping_threshold numeric(10,2) not null default 250;
 alter table public.site_settings
   add column if not exists currency text not null default 'USD';
+alter table public.site_settings
+  add column if not exists appearance jsonb not null default '{}'::jsonb;
+alter table public.site_settings
+  add column if not exists home_layout jsonb not null default '{}'::jsonb;
 alter table public.site_settings
   add column if not exists welcome_popup jsonb not null default '{}'::jsonb;
 alter table public.site_settings

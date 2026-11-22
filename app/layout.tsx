@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import type { CSSProperties } from "react";
 import { Nunito_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 import { CartProvider } from "@/components/providers/cart-provider";
@@ -13,6 +14,7 @@ import { MobileTabBar } from "@/components/storefront/mobile-tab-bar";
 import { WelcomePopup } from "@/components/storefront/welcome-popup";
 import { loadSiteSettings } from "@/lib/data/site-settings";
 import { getCatalogProducts } from "@/lib/data/storefront-products";
+import { siteThemeVariables } from "@/lib/site-settings";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -55,11 +57,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     loadSiteSettings(),
   ]);
   const wishlistAliases = catalogProducts.map(({ id, slug }) => ({ id, slug }));
+  const themeStyle = siteThemeVariables(settings.appearance) as CSSProperties;
 
   return (
     <html
       lang="en"
       className={cn("h-full", "antialiased", nunitoSans.variable, "font-sans")}
+      style={themeStyle}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background font-sans font-bold">

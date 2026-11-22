@@ -15,6 +15,7 @@ import {
   Eye,
   ImageIcon,
   Loader2,
+  MessageSquare,
   PackageSearch,
   Pencil,
   Plus,
@@ -54,6 +55,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InsightsPanel } from "@/components/admin/insights-panel";
 import { StorefrontSettingsPanel } from "@/components/admin/storefront-settings-panel";
+import { ReviewsPanel } from "@/components/admin/reviews-panel";
 import { ORDER_STATUSES, OrderDetailDialog } from "@/components/admin/order-detail-dialog";
 import { ProductFormDialog } from "@/components/admin/product-form-dialog";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "@/lib/data/catalog-meta";
@@ -68,7 +70,7 @@ import { discountPercent, formatDate, formatPrice } from "@/lib/format";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { persistOrderStatus } from "@/lib/supabase/order-status";
-import type { AdminProduct, AdminStats, Category, Order, OrderStatus } from "@/lib/types";
+import type { AdminProduct, AdminStats, Category, Order, OrderStatus, Review } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const DAY_MS = 86_400_000;
@@ -618,7 +620,12 @@ type AdminDashboardProps = {
   /** Request timestamp used to anchor relative date ranges without render-time clocks. */
   generatedAt: string;
   /** Opens a specific workspace tab, e.g. when returning from a customer profile. */
-  initialTab?: "orders" | "inventory" | "customers" | "insights" | "storefront";
+  initialTab?: "orders" | "inventory" | "customers" | "insights" | "storefront" | "reviews";
+  initialOrderStatus?: OrderStatusFilter;
+  initialInventoryHealth?: HealthFilter;
+  openNewProduct?: boolean;
+  reviews?: Review[];
+  reviewsLive?: boolean;
 };
 
 export function AdminDashboard({
@@ -628,26 +635,51 @@ export function AdminDashboard({
   canManage,
   generatedAt,
   initialTab = "orders",
+  initialOrderStatus,
+  initialInventoryHealth,
+  openNewProduct,
+  reviews: initialReviews = [],
 }: AdminDashboardProps) {
   const [orders, setOrders] = React.useState(initialOrders);
   const [products, setProducts] = React.useState(initialProducts);
+  const [reviews, setReviews] = React.useState(initialReviews);
   const [tab, setTab] = React.useState(initialTab);
 
   const [range, setRange] = React.useState<RangeKey>("30d");
   const [orderQuery, setOrderQuery] = React.useState("");
-  const [orderStatus, setOrderStatus] = React.useState<OrderStatusFilter>("all");
+  const [orderStatus, setOrderStatus] = React.useState<OrderStatusFilter>(
+    initialOrderStatus ?? "all"
+  );
   const [orderSort, setOrderSort] = React.useState<OrderSort>("newest");
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
 
   const [inventoryQuery, setInventoryQuery] = React.useState("");
   const [inventoryCategory, setInventoryCategory] = React.useState<CategoryFilter>("all");
-  const [inventoryHealth, setInventoryHealth] = React.useState<HealthFilter>("all");
+  const [inventoryHealth, setInventoryHealth] = React.useState<HealthFilter>(
+    initialInventoryHealth ?? "all"
+  );
   const [inventorySort, setInventorySort] = React.useState<InventorySort>("stock");
 
   const [customerQuery, setCustomerQuery] = React.useState("");
-  const [formState, setFormState] = React.useState<FormState | null>(null);
+  const [formState, setFormState] = React.useState<FormState | null>(() =>
+    openNewProduct && canManage ? { product: null, duplicate: false } : null
+  );
   const [deleteTarget, setDeleteTarget] = React.useState<AdminProduct | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+
+  async function handleDeleteReview(reviewId: string) {
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+        if (error) {
+          console.error("[admin] Could not delete review from Supabase:", error);
+          throw error;
+        }
+      }
+    }
+    setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+  }
 
   const rangeDays = RANGE_DAYS[range];
   const rangeLabel = RANGE_ITEMS[range];
@@ -1244,6 +1276,12 @@ export function AdminDashboard({
               count={customers.length}
             />
             <DashboardTab value="insights" label="Insights" icon={BarChart3} />
+            <DashboardTab
+              value="reviews"
+              label="Reviews"
+              icon={MessageSquare}
+              count={reviews.length}
+            />
             <DashboardTab value="storefront" label="Storefront" icon={Store} />
           </TabsList>
         </div>
@@ -2201,6 +2239,15 @@ export function AdminDashboard({
             canManage={canManage}
             onEditProduct={openEdit}
             onFilterStatus={viewStatusOrders}
+          />
+        </TabsContent>
+
+        <TabsContent value="reviews">
+          <ReviewsPanel
+            reviews={reviews}
+            products={products}
+            canManage={canManage}
+            onDeleteReview={handleDeleteReview}
           />
         </TabsContent>
 

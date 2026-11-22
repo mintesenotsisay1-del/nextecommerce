@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   normalizeSiteSettings,
   SITE_SETTINGS_STORAGE_KEY,
+  siteThemeVariables,
   type SiteSettings,
 } from "@/lib/site-settings";
 import { setActiveCurrency } from "@/lib/format";
@@ -24,6 +25,19 @@ function persistLocally(settings: SiteSettings) {
     window.localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   } catch {
     // Storage can be blocked or full — the in-memory value still works.
+  }
+}
+
+/**
+ * Writes the theme variables onto `<html>` immediately. The server renders the
+ * same variables, so this only changes anything after an admin saves a colour.
+ */
+function applyTheme(settings: SiteSettings) {
+  const root = document.documentElement;
+  for (const [property, value] of Object.entries(
+    siteThemeVariables(settings.appearance)
+  )) {
+    root.style.setProperty(property, value);
   }
 }
 
@@ -65,9 +79,16 @@ export function SiteSettingsProvider({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // Keep the CSS variables in sync with settings restored from localStorage
+  // or changed by another component.
+  React.useEffect(() => {
+    applyTheme(settings);
+  }, [settings]);
+
   const setSettings = React.useCallback((next: SiteSettings) => {
     const normalized = normalizeSiteSettings(next);
     setActiveCurrency(normalized.currency);
+    applyTheme(normalized);
     setSettingsState(normalized);
     if (!isSupabaseConfigured()) persistLocally(normalized);
   }, []);

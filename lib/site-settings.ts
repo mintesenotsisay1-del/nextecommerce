@@ -1,8 +1,9 @@
 /**
- * Shared storefront settings: company name, announcement banner, welcome
- * popup, holiday mode and the home-page hero. The same shape is used by the
- * admin editor, the Supabase row mapping and every storefront consumer, so a
- * saved value renders consistently everywhere.
+ * Shared storefront settings: company name, appearance/branding, home-page
+ * layout, announcement banner, welcome popup, holiday mode and the home-page
+ * hero. The same shape is used by the admin editor, the Supabase row mapping
+ * and every storefront consumer, so a saved value renders consistently
+ * everywhere.
  */
 
 export type SiteHeroImagePosition = "left" | "right";
@@ -69,12 +70,32 @@ export type SiteVacationSettings = {
   message: string;
 };
 
+export type SiteAppearanceSettings = {
+  /** HEX colour used for primary buttons and other primary accents. */
+  primaryColor: string;
+  /** HEX background colour for the announcement banner. */
+  bannerColor: string;
+};
+
+export type SiteHomeLayoutGridColumns = 2 | 4;
+
+export type SiteHomeLayoutSettings = {
+  /** Show the "Editor's picks" product row on the home page. */
+  showFeatured: boolean;
+  /** Show the "New arrivals" product row on the home page. */
+  showNewArrivals: boolean;
+  /** Product cards per row on desktop. Mobile always stays at two. */
+  gridColumns: SiteHomeLayoutGridColumns;
+};
+
 export type SiteSettings = {
   companyName: string;
   /** ISO 4217 currency code, e.g. "USD", "ETB", "EUR". */
   currency: string;
   /** Free shipping threshold in USD. Orders at or above this amount ship free. */
   freeShippingThreshold: number;
+  appearance: SiteAppearanceSettings;
+  homeLayout: SiteHomeLayoutSettings;
   hero: SiteHeroSettings;
   banner: SiteBannerSettings;
   welcomePopup: SiteWelcomePopupSettings;
@@ -85,6 +106,15 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   companyName: "Sole & Stone",
   currency: "USD",
   freeShippingThreshold: 250,
+  appearance: {
+    primaryColor: "#007a55",
+    bannerColor: "#0c090c",
+  },
+  homeLayout: {
+    showFeatured: true,
+    showNewArrivals: true,
+    gridColumns: 4,
+  },
   hero: {
     enabled: true,
     badge: "Autumn Release 2026",
@@ -138,6 +168,8 @@ export type SiteSettingsRow = {
   company_name?: string | null;
   currency?: string | null;
   free_shipping_threshold?: number | null;
+  appearance?: unknown;
+  home_layout?: unknown;
   hero?: unknown;
   banner?: unknown;
   welcome_popup?: unknown;
@@ -176,11 +208,69 @@ function wholeNumber(value: unknown, fallback: number, min: number, max: number)
 }
 
 /**
+ * Accepts `#rgb`, `#rrggbb` or the same values without the leading `#` and
+ * returns a lowercase six-digit HEX string. Invalid input uses the fallback so
+ * a half-typed admin value can never break the storefront CSS.
+ */
+export function normalizeHexColor(value: unknown, fallback: string): string {
+  const raw = typeof value === "string" ? value.trim() : "";
+  const prefixed = raw.startsWith("#") ? raw : `#${raw}`;
+  const short = /^#([0-9a-f]{3})$/i.exec(prefixed);
+
+  if (short) {
+    const [r, g, b] = short[1];
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+
+  return /^#[0-9a-f]{6}$/i.test(prefixed) ? prefixed.toLowerCase() : fallback;
+}
+
+/** Picks black or white text for a HEX background using relative luminance. */
+export function readableTextColor(hex: string): string {
+  const normalized = normalizeHexColor(hex, "#000000");
+  const channel = (offset: number) => {
+    const value = Number.parseInt(normalized.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance =
+    0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+
+  return luminance > 0.45 ? "#111111" : "#ffffff";
+}
+
+/**
+ * CSS custom properties for the admin-selected theme. Applied to `<html>` on
+ * the server and updated in place by the settings provider, so colour changes
+ * paint immediately without a page reload.
+ */
+export function siteThemeVariables(
+  appearance: SiteAppearanceSettings
+): Record<string, string> {
+  const primary = normalizeHexColor(
+    appearance.primaryColor,
+    DEFAULT_SITE_SETTINGS.appearance.primaryColor
+  );
+  const banner = normalizeHexColor(
+    appearance.bannerColor,
+    DEFAULT_SITE_SETTINGS.appearance.bannerColor
+  );
+
+  return {
+    "--primary": primary,
+    "--primary-foreground": readableTextColor(primary),
+    "--banner": banner,
+    "--banner-foreground": readableTextColor(banner),
+  };
+}
+
+/**
  * Accepts unknown data from Supabase, localStorage or the admin form and
  * returns a complete, safely bounded settings object.
  */
 export function normalizeSiteSettings(value: unknown): SiteSettings {
   const source = isRecord(value) ? value : {};
+  const appearance = isRecord(source.appearance) ? source.appearance : {};
+  const homeLayout = isRecord(source.homeLayout) ? source.homeLayout : {};
   const hero = isRecord(source.hero) ? source.hero : {};
   const banner = isRecord(source.banner) ? source.banner : {};
   const welcomePopup = isRecord(source.welcomePopup) ? source.welcomePopup : {};
@@ -201,6 +291,32 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
     companyName: textOr(source.companyName, defaults.companyName, 80),
     currency,
     freeShippingThreshold,
+    appearance: {
+      primaryColor: normalizeHexColor(
+        appearance.primaryColor,
+        defaults.appearance.primaryColor
+      ),
+      bannerColor: normalizeHexColor(
+        appearance.bannerColor,
+        defaults.appearance.bannerColor
+      ),
+    },
+    homeLayout: {
+      showFeatured: bool(homeLayout.showFeatured, defaults.homeLayout.showFeatured),
+      showNewArrivals: bool(
+        homeLayout.showNewArrivals,
+        defaults.homeLayout.showNewArrivals
+      ),
+      gridColumns:
+        wholeNumber(
+          homeLayout.gridColumns,
+          defaults.homeLayout.gridColumns,
+          2,
+          4
+        ) === 2
+          ? 2
+          : 4,
+    },
     hero: {
       enabled: bool(hero.enabled, defaults.hero.enabled),
       badge: text(hero.badge, defaults.hero.badge, 80),
@@ -266,6 +382,8 @@ export function rowToSettings(row: SiteSettingsRow | null | undefined): SiteSett
     companyName: row.company_name,
     currency: row.currency,
     freeShippingThreshold: row.free_shipping_threshold,
+    appearance: row.appearance,
+    homeLayout: row.home_layout,
     hero: row.hero,
     banner: row.banner,
     welcomePopup: row.welcome_popup,
@@ -278,6 +396,8 @@ export function settingsToRow(settings: SiteSettings) {
     company_name: settings.companyName,
     currency: settings.currency,
     free_shipping_threshold: settings.freeShippingThreshold,
+    appearance: settings.appearance,
+    home_layout: settings.homeLayout,
     hero: settings.hero,
     banner: settings.banner,
     welcome_popup: settings.welcomePopup,

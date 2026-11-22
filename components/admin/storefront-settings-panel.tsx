@@ -5,9 +5,11 @@ import {
   CalendarClock,
   Gift,
   ImageIcon,
+  LayoutGrid,
   Loader2,
   LockKeyhole,
   Megaphone,
+  Palette,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -36,11 +38,15 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   DEFAULT_SITE_SETTINGS,
+  normalizeHexColor,
   normalizeSiteSettings,
+  readableTextColor,
   settingsToRow,
   splitHighlight,
+  type SiteAppearanceSettings,
   type SiteBannerSettings,
   type SiteHeroSettings,
+  type SiteHomeLayoutSettings,
   type SiteSettings,
   type SiteVacationSettings,
   type SiteWelcomePopupSettings,
@@ -85,6 +91,18 @@ const CURRENCIES = [
   { code: "PLN", name: "Polish Złoty" },
   { code: "RUB", name: "Russian Ruble" },
 ] as const;
+
+const THEME_PRESETS = [
+  { name: "Emerald", color: "#007a55" },
+  { name: "Midnight", color: "#18181b" },
+  { name: "Royal blue", color: "#1d4ed8" },
+  { name: "Violet", color: "#7c3aed" },
+  { name: "Crimson", color: "#b91c1c" },
+  { name: "Amber", color: "#b45309" },
+  { name: "Rose", color: "#be185d" },
+] as const;
+
+const HEX_COLOR_INPUT = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 function friendlyError(message: string) {
   if (message.includes("row-level security") || message.includes("permission")) {
@@ -199,7 +217,147 @@ function ToggleField({
   );
 }
 
-function BannerPreview({ banner }: { banner: SiteBannerSettings }) {
+function ColorField({
+  id,
+  label,
+  hint,
+  value,
+  fallback,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  value: string;
+  fallback: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const safeColor = normalizeHexColor(value, fallback);
+
+  return (
+    <Field label={label} htmlFor={id} hint={hint}>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={safeColor}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          aria-label={`${label} colour picker`}
+          className="size-10 shrink-0 cursor-pointer rounded-lg border bg-background p-1 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <Input
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          maxLength={7}
+          disabled={disabled}
+          placeholder={fallback}
+          className="font-mono uppercase"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+    </Field>
+  );
+}
+
+function ThemePreview({ appearance }: { appearance: SiteAppearanceSettings }) {
+  const primary = normalizeHexColor(
+    appearance.primaryColor,
+    DEFAULT_SITE_SETTINGS.appearance.primaryColor
+  );
+  const banner = normalizeHexColor(
+    appearance.bannerColor,
+    DEFAULT_SITE_SETTINGS.appearance.bannerColor
+  );
+
+  return (
+    <div className="rounded-2xl border bg-muted/30 p-4">
+      <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+        Theme preview
+      </p>
+      <div className="mt-3 overflow-hidden rounded-xl border bg-background">
+        <div
+          className="px-3 py-2 text-center text-[10px] font-semibold tracking-[0.14em] uppercase"
+          style={{ backgroundColor: banner, color: readableTextColor(banner) }}
+        >
+          Free shipping · 30-day returns
+        </div>
+        <div className="flex flex-wrap items-center gap-2 p-3">
+          <span
+            className="rounded-full px-3 py-1.5 text-[11px] font-semibold"
+            style={{ backgroundColor: primary, color: readableTextColor(primary) }}
+          >
+            Primary button
+          </span>
+          <span className="rounded-full border px-3 py-1.5 text-[11px]">
+            Secondary button
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LayoutPreview({ layout }: { layout: SiteHomeLayoutSettings }) {
+  return (
+    <div className="rounded-2xl border bg-muted/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+          Desktop grid preview
+        </p>
+        <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+          {layout.gridColumns} per row
+        </span>
+      </div>
+      <div
+        className={cn(
+          "mt-3 grid gap-2",
+          layout.gridColumns === 2 ? "grid-cols-2" : "grid-cols-4"
+        )}
+      >
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="aspect-[4/5] rounded-lg border bg-background"
+          />
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 font-semibold",
+            layout.showFeatured
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          Featured {layout.showFeatured ? "on" : "off"}
+        </span>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 font-semibold",
+            layout.showNewArrivals
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          New arrivals {layout.showNewArrivals ? "on" : "off"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BannerPreview({
+  banner,
+  color,
+}: {
+  banner: SiteBannerSettings;
+  color: string;
+}) {
   if (!banner.enabled) {
     return (
       <p className="rounded-xl border border-dashed px-3 py-2 text-[11px] text-muted-foreground">
@@ -208,13 +366,21 @@ function BannerPreview({ banner }: { banner: SiteBannerSettings }) {
     );
   }
 
+  const background = normalizeHexColor(
+    color,
+    DEFAULT_SITE_SETTINGS.appearance.bannerColor
+  );
+
   return (
-    <div className="relative overflow-hidden rounded-xl bg-foreground px-8 py-2 text-center text-[10px] font-semibold tracking-[0.14em] text-background uppercase sm:text-[11px]">
+    <div
+      className="relative overflow-hidden rounded-xl px-8 py-2 text-center text-[10px] font-semibold tracking-[0.14em] uppercase sm:text-[11px]"
+      style={{ backgroundColor: background, color: readableTextColor(background) }}
+    >
       {banner.message || "Your announcement message"}
       {banner.dismissible && (
         <span
           aria-hidden
-          className="absolute top-1/2 right-2 -translate-y-1/2 text-sm leading-none text-background/60"
+          className="absolute top-1/2 right-2 -translate-y-1/2 text-sm leading-none opacity-60"
         >
           ×
         </span>
@@ -417,11 +583,11 @@ function HeroPreview({
 }
 
 /**
- * Admin editor for the company name, shipping, announcement banner, welcome
- * popup, holiday mode and home-page hero (copy, photo layout, trust badges
- * and the editor's-pick card). Saves the single `site_settings` row to
- * Supabase when configured; otherwise keeps the change in the provider and
- * localStorage for the demo session.
+ * Admin editor for the company name, shipping, appearance/branding, home-page
+ * layout, announcement banner, welcome popup, holiday mode and home-page hero
+ * (copy, photo layout, trust badges and the editor's-pick card). Saves the
+ * single `site_settings` row to Supabase when configured; otherwise keeps the
+ * change in the provider and localStorage for the demo session.
  */
 export function StorefrontSettingsPanel({
   products,
@@ -478,6 +644,20 @@ export function StorefrontSettingsPanel({
     setDraft((current) => ({ ...current, banner: { ...current.banner, ...patch } }));
   }
 
+  function updateAppearance(patch: Partial<SiteAppearanceSettings>) {
+    setDraft((current) => ({
+      ...current,
+      appearance: { ...current.appearance, ...patch },
+    }));
+  }
+
+  function updateHomeLayout(patch: Partial<SiteHomeLayoutSettings>) {
+    setDraft((current) => ({
+      ...current,
+      homeLayout: { ...current.homeLayout, ...patch },
+    }));
+  }
+
   function updateWelcomePopup(patch: Partial<SiteWelcomePopupSettings>) {
     setDraft((current) => ({
       ...current,
@@ -515,6 +695,15 @@ export function StorefrontSettingsPanel({
     }
     if (next.vacation.enabled && !next.vacation.message) {
       toast.error("Add a checkout warning before enabling holiday mode.");
+      return;
+    }
+    if (
+      !HEX_COLOR_INPUT.test(draft.appearance.primaryColor.trim()) ||
+      !HEX_COLOR_INPUT.test(draft.appearance.bannerColor.trim())
+    ) {
+      toast.error("Enter a valid HEX colour", {
+        description: "Use a 3- or 6-digit HEX code, for example #007a55.",
+      });
       return;
     }
 
@@ -572,9 +761,10 @@ export function StorefrontSettingsPanel({
           <div>
             <h2 className="font-heading text-lg font-semibold">Storefront</h2>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-              Edit the company name, currency, shipping, announcement banner, welcome popup,
-              holiday mode and home-page hero — including photo layout, trust badges and the
-              editor’s pick card. Save once and the storefront updates everywhere.
+              Edit the company name, currency, shipping, appearance and branding, home-page
+              layout, announcement banner, welcome popup, holiday mode and hero — including
+              photo layout, trust badges and the editor’s pick card. Save once and the
+              storefront updates everywhere.
             </p>
           </div>
           <Badge variant="outline" className="rounded-full">
@@ -646,6 +836,116 @@ export function StorefrontSettingsPanel({
               </Select>
             </Field>
           </div>
+        </section>
+
+        {/* ── Appearance & branding ── */}
+        <section className="flex flex-col gap-4 rounded-2xl border p-4 sm:p-5">
+          <SectionHeading
+            icon={Palette}
+            title="Appearance & branding"
+            description="Set the primary button and announcement banner colours with a HEX code. Saved colours update the storefront immediately through CSS variables — no page reload needed."
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ColorField
+              id="appearance-primary"
+              label="Primary button colour"
+              hint="Used by primary buttons, active tabs, focus accents and other brand highlights."
+              value={draft.appearance.primaryColor}
+              fallback={DEFAULT_SITE_SETTINGS.appearance.primaryColor}
+              disabled={!canManage}
+              onChange={(value) => updateAppearance({ primaryColor: value })}
+            />
+            <ColorField
+              id="appearance-banner"
+              label="Banner background colour"
+              hint="Background of the announcement strip above the header. Text contrast is chosen automatically."
+              value={draft.appearance.bannerColor}
+              fallback={DEFAULT_SITE_SETTINGS.appearance.bannerColor}
+              disabled={!canManage}
+              onChange={(value) => updateAppearance({ bannerColor: value })}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[11px] font-medium text-muted-foreground">
+              Primary presets
+            </span>
+            {THEME_PRESETS.map((preset) => (
+              <button
+                key={preset.color}
+                type="button"
+                onClick={() => updateAppearance({ primaryColor: preset.color })}
+                disabled={!canManage}
+                title={`${preset.name} — ${preset.color}`}
+                aria-label={`Use ${preset.name} primary colour ${preset.color}`}
+                className="size-6 rounded-full border border-foreground/10 ring-offset-2 ring-offset-background transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: preset.color }}
+              />
+            ))}
+          </div>
+
+          <ThemePreview appearance={draft.appearance} />
+        </section>
+
+        {/* ── Home page layout ── */}
+        <section className="flex flex-col gap-4 rounded-2xl border p-4 sm:p-5">
+          <SectionHeading
+            icon={LayoutGrid}
+            title="Home page layout"
+            description="Choose which product sections appear on the home page and how many cards sit in each row on desktop."
+          />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ToggleField
+              id="home-show-featured"
+              label="Show Featured section"
+              hint="The “Editor’s picks” product row."
+              checked={draft.homeLayout.showFeatured}
+              onCheckedChange={(checked) => updateHomeLayout({ showFeatured: checked })}
+              disabled={!canManage}
+            />
+            <ToggleField
+              id="home-show-new-arrivals"
+              label="Show New Arrivals section"
+              hint="The “New arrivals” product row."
+              checked={draft.homeLayout.showNewArrivals}
+              onCheckedChange={(checked) =>
+                updateHomeLayout({ showNewArrivals: checked })
+              }
+              disabled={!canManage}
+            />
+          </div>
+
+          <Field
+            label="Grid columns (products per row)"
+            htmlFor="home-grid-columns"
+            hint="Choose 2 or 4 cards per row on desktop. Mobile always keeps two columns so cards stay readable. Applies to Featured, New arrivals, Best sellers and Best value."
+          >
+            <Select
+              value={String(draft.homeLayout.gridColumns)}
+              onValueChange={(value) =>
+                updateHomeLayout({ gridColumns: value === "2" ? 2 : 4 })
+              }
+              disabled={!canManage}
+            >
+              <SelectTrigger
+                id="home-grid-columns"
+                className="w-full sm:max-w-xs"
+                aria-label="Products per row on desktop"
+              >
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {draft.homeLayout.gridColumns} columns
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2">2 columns</SelectItem>
+                <SelectItem value="4">4 columns</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <LayoutPreview layout={draft.homeLayout} />
         </section>
 
         {/* ── Shipping ── */}
@@ -773,7 +1073,10 @@ export function StorefrontSettingsPanel({
             disabled={!canManage}
           />
 
-          <BannerPreview banner={draft.banner} />
+          <BannerPreview
+            banner={draft.banner}
+            color={draft.appearance.bannerColor}
+          />
         </section>
 
         {/* ── Welcome discount popup ── */}

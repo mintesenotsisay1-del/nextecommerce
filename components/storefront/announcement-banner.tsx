@@ -24,7 +24,13 @@ export function AnnouncementBanner() {
   );
 
   return (
-    <div className="relative bg-foreground text-background">
+    <div
+      className="relative"
+      style={{
+        backgroundColor: "var(--banner)",
+        color: "var(--banner-foreground)",
+      }}
+    >
       <div
         className={cn(
           "mx-auto flex min-h-9 max-w-7xl items-center justify-center py-2 text-center text-[10px] font-semibold tracking-[0.14em] uppercase sm:text-[11px]",
@@ -47,7 +53,7 @@ export function AnnouncementBanner() {
           type="button"
           onClick={() => setDismissedMessage(banner.message)}
           aria-label="Dismiss announcement"
-          className="absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-background/70 transition-colors hover:bg-background/10 hover:text-background"
+          className="absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full opacity-70 transition-opacity hover:opacity-100"
         >
           <X className="size-3.5" aria-hidden />
         </button>

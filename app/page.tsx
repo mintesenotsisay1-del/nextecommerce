@@ -26,6 +26,8 @@ import { getCatalogProducts } from "@/lib/data/storefront-products";
 import { loadSiteSettings } from "@/lib/data/site-settings";
 import { discountPercent, formatPrice } from "@/lib/format";
 import { HomeHero } from "@/components/storefront/home-hero";
+import { HomeProductGrid } from "@/components/storefront/home-product-grid";
+import { HomeSectionGate } from "@/components/storefront/home-section-gate";
 import { ProductCard } from "@/components/storefront/product-card";
 import { RecentlyViewedRail } from "@/components/storefront/recently-viewed-rail";
 import { SectionHeading } from "@/components/storefront/section-heading";
@@ -41,6 +43,7 @@ export default async function HomePage() {
     loadSiteSettings(),
   ]);
   const { currency, freeShippingThreshold } = settings;
+  const { homeLayout } = settings;
 
   const categories = getCategoryTiles(products);
   const featured = getFeaturedSelection(products, 4);
@@ -89,7 +92,7 @@ export default async function HomePage() {
           "query-input": "required name=search_term_string",
         },
       },
-      ...(featured.length
+      ...(homeLayout.showFeatured && featured.length
         ? [
             {
               "@type": "ItemList",
@@ -111,6 +114,11 @@ export default async function HomePage() {
     freeShippingThreshold > 0
       ? `On every order above ${formatPrice(freeShippingThreshold, currency)}, worldwide.`
       : "On every order, worldwide.";
+
+  const productGridClass =
+    settings.homeLayout.gridColumns === 2
+      ? "grid grid-cols-1 gap-x-3 gap-y-8 sm:grid-cols-2 sm:gap-x-5"
+      : "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 lg:grid-cols-4";
 
   return (
     <div className="overflow-x-clip">
@@ -220,7 +228,7 @@ export default async function HomePage() {
       )}
 
       {/* ── Featured ─────────────────────────────────────────── */}
-      {featured.length > 0 && (
+      {homeLayout.showFeatured && featured.length > 0 && (
         <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             kicker="Curated"
@@ -235,7 +243,7 @@ export default async function HomePage() {
               </Button>
             }
           />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 lg:grid-cols-4">
+          <div className={productGridClass}>
             {featured.map((product, index) => (
               <ProductCard key={product.id} product={product} priority={index < 2} />
             ))}
@@ -297,7 +305,7 @@ export default async function HomePage() {
       )}
 
       {/* ── New arrivals ─────────────────────────────────────── */}
-      {newArrivals.length > 0 && (
+      {homeLayout.showNewArrivals && newArrivals.length > 0 && (
         <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             kicker="Just landed"
@@ -312,7 +320,7 @@ export default async function HomePage() {
               </Button>
             }
           />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 lg:grid-cols-4">
+          <div className={productGridClass}>
             {newArrivals.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -336,7 +344,7 @@ export default async function HomePage() {
               </Button>
             }
           />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 lg:grid-cols-4">
+          <div className={productGridClass}>
             {bestSellers.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -405,7 +413,7 @@ export default async function HomePage() {
               </Button>
             }
           />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 lg:grid-cols-4">
+          <div className={productGridClass}>
             {value.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
